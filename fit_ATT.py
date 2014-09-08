@@ -39,7 +39,7 @@ def gen_file_fit():
     'pdf_threshold' : 0.1,
     'pdf_kernel' : 3.32, 
     'fit_method' : 'l-bfgs-b',
-}
+    }
 
     for f, p in it.izip(filenames, it.repeat(p))
         yield (f, p)
