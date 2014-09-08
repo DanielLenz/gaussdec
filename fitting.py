@@ -72,5 +72,6 @@ default_p = {
 }
 
 
-def fit_spectrum(y, p):
+def fit_spectrum(y, objective, jacobian, stats, p):
+    
 
