@@ -52,7 +52,7 @@ def initial_centers_pdf(coordinates, values, threshold=0.1, kernel=0.):
 
     sm_values = gaussian_filter1d(values, kernel, mode="constant", cval=0)
 
-    cdf = np.cumsum(smvalues > threshold).astype(float)
+    cdf = np.cumsum(sm_values > threshold).astype(float)
     cdf /= cdf[-1]
 
     cdf_interp = interp1d(cdf, coordinates, fill_value=0, bounds_error=False)
@@ -70,9 +70,9 @@ default_p = {
     'int_low' : 5e18 / 1.82e18 / 1.28,
     'int_high' : 1e21 / 1.82e18 / 1.28,
     'sigma_low' : np.sqrt(50 / 21.85) / 1.28 / 2.35,
-    'sigma_high' : np.sqrt(10000 / 21.85) / 1.28 / 2.35,
-    'pdf_threshold' : 0.1,
-    'pdf_kernel' : 3.32, 
+    'sigma_high' : np.sqrt(40000 / 21.85) / 1.28 / 2.35,
+    'pdf_threshold' : 0.09 * 3,
+    'pdf_kernel' : 0, 
     'fit_method' : 'l-bfgs-b',
 }
 
@@ -108,7 +108,9 @@ def fit_spectrum(y, objective, jacobian, stats, p):
 
             yield result.x, stats(result.x, x, y)
 
-    trial_results = sorted(list(trials()), key=lambda k:k[0])
+    trial_results = sorted(list(trials()), key=lambda k:k[1][0])
+    t = trial_results[0]
     
-    result_keys = ['bic', 'parameters']
-    return {k:v for k,v in zip(result_keys, trial_results[0])}
+    result_keys = ['parameters', 'stats']
+    result_values = [t[0].tolist(), map(float, t[1])]
+    return {k : v for k,v in zip(result_keys, result_values)}
