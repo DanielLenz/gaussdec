@@ -3,6 +3,8 @@ import theano.tensor as T
 
 import numpy as np
 from scipy.interpolate import interp1d
+from scipy.ndimage import gaussian_filter1d
+from scipy.optimize import minimize
 
 def make_multi_gaussian_model(tsys=20):
 
@@ -46,15 +48,17 @@ def make_multi_gaussian_model(tsys=20):
     return f_model, f_residual, f_objective, f_jacobian, f_stats
 
 
-def initial_centers_pdf(coordinates, values, threshold=0.1):
+def initial_centers_pdf(coordinates, values, threshold=0.1, kernel=0.):
 
-    cdf = np.cumsum(values > threshold).astype(float)
+    sm_values = gaussian_filter1d(values, kernel, mode="constant", cval=0)
+
+    cdf = np.cumsum(smvalues > threshold).astype(float)
     cdf /= cdf[-1]
 
     cdf_interp = interp1d(cdf, coordinates, fill_value=0, bounds_error=False)
 
     def get_centers(n_centers):
-        return cdf_interp(np.random.uniform(0,1,n_centers))
+        return cdf_interp(np.random.uniform(0, 1, n_centers))
 
     return get_centers
 
@@ -68,7 +72,8 @@ default_p = {
     'sigma_low' : np.sqrt(50 / 21.85) / 1.28 / 2.35,
     'sigma_high' : np.sqrt(10000 / 21.85) / 1.28 / 2.35,
     'pdf_threshold' : 0.1,
-    'pdf_kernel' : 0, 
+    'pdf_kernel' : 3.32, 
+    'fit_method' : 'l-bfgs-b',
 }
 
 
@@ -76,5 +81,34 @@ def fit_spectrum(y, objective, jacobian, stats, p):
 
     x = np.arange(y.shape[0])
 
-    initial_centers = initial_centers_pdf(x, y)
+    initial_centers = initial_centers_pdf(x, y,
+        threshold=p['pdf_threshold'],
+        kernel=p['pdf_kernel'])
 
+    component_trials = range(p['min_components'], p['max_components']) * p['iterations']
+
+    def trials():
+
+        for n_components in component_trials:
+
+            x0 = np.array([p['int_low'] * 5, 0, p['sigma_low']] * n_components)
+            x0[1::3] = initial_centers(n_components)
+
+            bounds = [
+                (p['int_low'], p['int_high']),
+                (None, None),
+                (p['sigma_low'], p['sigma_high']),
+            ] * n_components
+
+            result = minimize(objective, x0,
+                args=(x, y),
+                jac=jacobian,
+                bounds=bounds,
+                method=p['fit_method'])
+
+            yield result.x, stats(result.x, x, y)
+
+    trial_results = sorted(list(trials()), key=lambda k:k[0])
+    
+    result_keys = ['bic', 'parameters']
+    return {k:v for k,v in zip(result_keys, trial_results[0])}
