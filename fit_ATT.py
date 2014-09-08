@@ -1,7 +1,9 @@
+from multiprocessing import Pool
 import json
 import gzip
 import os
 import itertools as it
+import glob
 
 import numpy as np
 
@@ -34,19 +36,21 @@ def fit_file(filename, p):
 
 def gen_file_fit():
     # get filenames
-    filenames = glob.glob('/vol/arc1/archive/bwinkel/EBHIShpx/ebhis_hpx_1024*141of192_G.fits')
+    filenames = glob.glob('/users/dlenz/projects/gaussdec/ebhis_hpx_1024*141of192_G7.fits')
     
     # set default parameters
     p = default_p
 
-    for f, p in it.izip(filenames, it.repeat(p))
-        yield (f, p)
+    for f, p in it.izip(filenames, it.repeat(p)):
+        yield f, p
 
 # main
 if __name__ == '__main__':
 
     # fit a single file
-    apply(fit_file, gen_file_fit)
+    # p = Pool()
+    # p.apply(fit_file, gen_file_fit)
+    map(fit_file, gen_file_fit())
 
 
 
