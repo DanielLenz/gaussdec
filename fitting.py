@@ -85,7 +85,7 @@ def fit_spectrum(y, objective, jacobian, stats, p):
         threshold=p['pdf_threshold'],
         kernel=p['pdf_kernel'])
 
-    component_trials = range(p['min_components'], p['max_components']) * p['iterations']
+    component_trials = range(p['min_components'], p['max_components'] + 1) * p['iterations']
 
     def trials():
 
