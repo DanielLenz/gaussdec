@@ -4,7 +4,7 @@ import theano.tensor as T
 import numpy as np
 from scipy.interpolate import interp1d
 
-def make_multi_gaussian_model():
+def make_multi_gaussian_model(tsys=20):
 
     x = T.vector('x')
     y = T.vector('y')
@@ -18,7 +18,7 @@ def make_multi_gaussian_model():
     components = amplitudes / T.sqrt(2 * np.pi) / dispersions * T.exp(-0.5 * (sx - centers) * (sx - centers) / dispersions / dispersions)
     multigauss = T.sum(components, 1)
     residual = y - multigauss
-    weighted_residual = residual / (20. + y)
+    weighted_residual = residual / (tsys + y)
     objective = T.sum(weighted_residual * weighted_residual)
     bic = y.shape[0] * T.log(objective / (y.shape[0] - 1)) + parameters.shape[0] * T.log(y.shape[0])
     jacobian = theano.gradient.jacobian(objective, parameters)
@@ -73,5 +73,8 @@ default_p = {
 
 
 def fit_spectrum(y, objective, jacobian, stats, p):
-    
+
+    x = np.arange(y.shape[0])
+
+    initial_centers = initial_centers_pdf(x, y)
 
