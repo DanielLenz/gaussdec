@@ -71,8 +71,8 @@ default_p = {
     'int_high' : 1e21 / 1.82e18 / 1.28,
     'sigma_low' : np.sqrt(50 / 21.85) / 1.28 / 2.35,
     'sigma_high' : np.sqrt(40000 / 21.85) / 1.28 / 2.35,
-    'pdf_threshold' : 0.09 * 3,
-    'pdf_kernel' : 0, 
+    'pdf_threshold' : 0.09,
+    'pdf_kernel' : 3.32, 
     'fit_method' : 'l-bfgs-b',
 }
 
