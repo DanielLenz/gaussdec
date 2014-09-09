@@ -48,9 +48,13 @@ def make_multi_gaussian_model(tsys=20):
     return f_model, f_residual, f_objective, f_jacobian, f_stats
 
 
-def initial_centers_pdf(coordinates, values, threshold=0.1, kernel=0.):
+def initial_centers_pdf(coordinates, values, threshold=0.1, kernel=0., trim=10):
 
-    sm_values = gaussian_filter1d(values, kernel, mode="constant", cval=0)
+    trim_mask = np.arange(values.shape[0])
+    trim_mask[:trim] = 0
+    trim_mask[-trim:] = 0
+    
+    sm_values = gaussian_filter1d(values * trim_mask, kernel, mode="constant", cval=0)
 
     cdf = np.cumsum(sm_values > threshold).astype(float)
     cdf /= cdf[-1]
@@ -74,6 +78,7 @@ default_p = {
     'pdf_threshold' : 0.09,
     'pdf_kernel' : 3.32, 
     'fit_method' : 'l-bfgs-b',
+    'trim' : 10,
 }
 
 
@@ -83,7 +88,8 @@ def fit_spectrum(y, objective, jacobian, stats, p):
 
     initial_centers = initial_centers_pdf(x, y,
         threshold=p['pdf_threshold'],
-        kernel=p['pdf_kernel'])
+        kernel=p['pdf_kernel'],
+        trim=p['trim'])
 
     component_trials = range(p['min_components'], p['max_components'] + 1) * p['iterations']
 
