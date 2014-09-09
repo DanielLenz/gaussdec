@@ -26,12 +26,14 @@ def fit_file(args):
         hpxfile = fits.getdata(filename, ext=1)
 
         def fit_spectra():
-            for row in hpxfile[:50]:
+            for i, row in enumerate(hpxfile):
+                print '{n} of {tot}'.format(n=i, tot=len(hpxfile))
+
                 # skip the Galactic plane
                 theta, glon = np.rad2deg(hp.pix2ang(1024, row['HPXINDEX']))
                 glat = 90. - theta
                 if glat > 15.:
-                    yield row['HPXINDEX'], fit_spectrum(row['DATA'], f_objective, f_jacobian, f_stats, p)
+                    yield int(row['HPXINDEX']), fit_spectrum(row['DATA'], f_objective, f_jacobian, f_stats, p)
 
         # put results into dict, dump them to disk
         results = {int(k) : v for k, v in fit_spectra()}
@@ -42,7 +44,7 @@ def fit_file(args):
 
 def gen_file_fit():
     # get filenames
-    filenames = glob.glob('/users/dlenz/projects/gaussdec/ebhis_hpx_1024*112of192_G7.fits')
+    filenames = glob.glob('ebhis_hpx_1024*112of192_G7.fits')
     
     # set default parameters
     p = default_p
