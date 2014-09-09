@@ -50,13 +50,13 @@ def make_multi_gaussian_model(tsys=20):
 
 def initial_centers_pdf(coordinates, values, threshold=0.1, kernel=0., trim=10):
 
-    trim_mask = np.arange(values.shape[0])
+    trim_mask = np.ones(values.shape[0])
     trim_mask[:trim] = 0
     trim_mask[-trim:] = 0
     
     sm_values = gaussian_filter1d(values * trim_mask, kernel, mode="constant", cval=0)
 
-    cdf = np.cumsum(sm_values > threshold).astype(float)
+    cdf = np.cumsum(np.where(sm_values > threshold, np.log(sm_values+1), 0)).astype(float)
     cdf /= cdf[-1]
 
     cdf_interp = interp1d(cdf, coordinates, fill_value=0, bounds_error=False)
