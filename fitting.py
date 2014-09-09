@@ -3,10 +3,10 @@ import theano.tensor as T
 
 import numpy as np
 from scipy.interpolate import interp1d
-from scipy.ndimage import gaussian_filter1d
+from scipy.ndimage import gaussian_filter1d, binary_dilation
 from scipy.optimize import minimize
 
-def make_multi_gaussian_model(tsys=20):
+def make_multi_gaussian_model(tsys=40.):
 
     x = T.vector('x')
     y = T.vector('y')
@@ -50,13 +50,9 @@ def make_multi_gaussian_model(tsys=20):
 
 def initial_centers_pdf(coordinates, values, threshold=0.1, kernel=0., trim=10):
 
-    trim_mask = np.ones(values.shape[0])
-    trim_mask[:trim] = 0
-    trim_mask[-trim:] = 0
-    
-    sm_values = gaussian_filter1d(values * trim_mask, kernel, mode="constant", cval=0)
+    sm_values = gaussian_filter1d(values, kernel, mode="constant", cval=0)
 
-    cdf = np.cumsum(np.where(sm_values > threshold, np.log(sm_values+1), 0)).astype(float)
+    cdf = np.cumsum(sm_values > threshold).astype(float)
     cdf /= cdf[-1]
 
     cdf_interp = interp1d(cdf, coordinates, fill_value=0, bounds_error=False)
@@ -64,36 +60,46 @@ def initial_centers_pdf(coordinates, values, threshold=0.1, kernel=0., trim=10):
     def get_centers(n_centers):
         return cdf_interp(np.random.uniform(0, 1, n_centers))
 
-    return get_centers
+    return get_centers, sm_values > threshold
 
 
 default_p = {
     'min_components' : 1,
     'max_components' : 10,
-    'iterations' : 10,
+    'iterations' : 5,
     'int_low' : 5e18 / 1.82e18 / 1.28,
     'int_high' : 1e21 / 1.82e18 / 1.28,
     'sigma_low' : np.sqrt(50 / 21.85) / 1.28 / 2.35,
     'sigma_high' : np.sqrt(40000 / 21.85) / 1.28 / 2.35,
-    'pdf_threshold' : 0.09,
+    'pdf_threshold' : 0.05,
     'pdf_kernel' : 3.32, 
     'fit_method' : 'l-bfgs-b',
-    'trim' : 10,
+    'trim' : 200,
 }
 
 
 def fit_spectrum(y, objective, jacobian, stats, p):
 
-    x = np.arange(y.shape[0])
+    tmask = np.ones(y.shape[0], dtype=bool)
+    tmask[:p['trim']] = False
+    tmask[-p['trim']:] = False
 
-    initial_centers = initial_centers_pdf(x, y,
+    x = np.arange(y.shape[0])
+    x = x[tmask]
+
+    y = y[tmask]
+
+    initial_centers, pdfmask = initial_centers_pdf(x, y,
         threshold=p['pdf_threshold'],
-        kernel=p['pdf_kernel'],
-        trim=p['trim'])
+        kernel=p['pdf_kernel'])
 
     component_trials = range(p['min_components'], p['max_components'] + 1) * p['iterations']
 
     def trials():
+
+        fitmask = binary_dilation(pdfmask, iterations=20)
+        fit_x = x[fitmask]
+        fit_y = y[fitmask]
 
         for n_components in component_trials:
 
@@ -107,12 +113,12 @@ def fit_spectrum(y, objective, jacobian, stats, p):
             ] * n_components
 
             result = minimize(objective, x0,
-                args=(x, y),
+                args=(fit_x, fit_y),
                 jac=jacobian,
                 bounds=bounds,
                 method=p['fit_method'])
 
-            yield result.x, stats(result.x, x, y)
+            yield result.x, stats(result.x, fit_x, fit_y)
 
     trial_results = sorted(list(trials()), key=lambda k:k[1][0])
     t = trial_results[0]
