@@ -26,10 +26,10 @@ def fit_file(args):
         hpxfile = fits.getdata(filename, ext=1)
 
         def fit_spectra():
-            for y in hpxfile['DATA'][:1]:
+            for y in hpxfile['DATA'][:100]:
                 yield fit_spectrum(y, f_objective, f_jacobian, f_stats, p)
 
-        results = {k : v for k, v in it.izip(hpxfile['HPXINDEX'], fit_spectra())}
+        results = {int(k) : v for k, v in it.izip(hpxfile['HPXINDEX'], fit_spectra())}
 
         with gzip.GzipFile(outname, 'w') as f:
             json.dump(results, f)
@@ -41,6 +41,7 @@ def gen_file_fit():
     
     # set default parameters
     p = default_p
+    p['trim'] = 100
 
     for f, p in it.izip(filenames, it.repeat(p)):
         yield f, p
