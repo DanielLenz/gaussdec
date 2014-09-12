@@ -9,7 +9,7 @@ import numpy as np
 import healpy as hp
 from astropy.io import fits
 
-from fitting import fit_spectrum, make_multi_gaussian_model, default_p
+from . import fit_spectrum, make_multi_gaussian_model, default_p
 
 
 def fit_file(args):
