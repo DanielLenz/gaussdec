@@ -9,13 +9,12 @@ import numpy as np
 import healpy as hp
 from astropy.io import fits
 
-from . import fit_spectrum, make_multi_gaussian_model, default_p
+from fitting import fit_spectrum, make_multi_gaussian_model, default_p
 
 
 def fit_file(args):
 
     filename, p = args
-    # outname = os.path.splitext(filename)[0] + '_fits.gzjs'
     outname = os.path.basename(filename) + '_fits.gzjs'
     
     if not os.path.exists(outname):
