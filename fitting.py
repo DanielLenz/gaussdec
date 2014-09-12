@@ -66,7 +66,7 @@ def initial_centers_pdf(coordinates, values, threshold=0.1, kernel=0., trim=10):
 default_p = {
     'min_components' : 1,
     'max_components' : 10,
-    'iterations' : 5,
+    'iterations' : 3,
     'int_low' : 5e18 / 1.82e18 / 1.28,
     'int_high' : 1e21 / 1.82e18 / 1.28,
     'sigma_low' : np.sqrt(50 / 21.85) / 1.28 / 2.35,
@@ -75,6 +75,7 @@ default_p = {
     'pdf_kernel' : 3.32, 
     'fit_method' : 'l-bfgs-b',
     'trim' : 200,
+    'iteration_size' : 5,
 }
 
 
@@ -86,20 +87,20 @@ def fit_spectrum(y, objective, jacobian, stats, p):
 
     x = np.arange(y.shape[0])
     x = x[tmask]
-
     y = y[tmask]
 
     initial_centers, pdfmask = initial_centers_pdf(x, y,
         threshold=p['pdf_threshold'],
         kernel=p['pdf_kernel'])
 
-    component_trials = range(p['min_components'], p['max_components'] + 1) * p['iterations']
+    fitmask = binary_dilation(pdfmask, iterations=40)
+
+    fit_x = x[fitmask]
+    fit_y = y[fitmask]
+
+    component_trials = range(p['min_components'], p['max_components'] + 1)
 
     def trials():
-
-        fitmask = binary_dilation(pdfmask, iterations=20)
-        fit_x = x[fitmask]
-        fit_y = y[fitmask]
 
         for n_components in component_trials:
 
@@ -118,13 +119,21 @@ def fit_spectrum(y, objective, jacobian, stats, p):
                 bounds=bounds,
                 method=p['fit_method'])
 
-            yield result.x, stats(result.x, fit_x, fit_y)
+            yield result.x, stats(result.x, x, y), n_components
 
-    trial_results = sorted(list(trials()), key=lambda k:k[1][0])
+    trial_results = []
+    
+    for iteration in xrange(p['iterations']):
+        
+        trial_results.extend(trials())
+        
+        trial_results = sorted(trial_results, key=lambda k:k[1][0])
+        component_trials = [t[2] for t in trial_results[:p['iteration_size']]]
+    
     t = trial_results[0]
     
-    result_keys = ['parameters', 'stats']
-    result_values = [t[0].tolist(), map(float, t[1])]
+    result_keys = ['parameters', 'stats', 'components']
+    result_values = [t[0].tolist(), map(float, t[1]), int(t[2])]
     return {k : v for k,v in zip(result_keys, result_values)}
 
 
