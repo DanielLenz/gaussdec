@@ -56,9 +56,9 @@ def gen_file_fit():
 if __name__ == '__main__':
 
     # fit a single file
-    # p = Pool()
-    # p.apply(fit_file, gen_file_fit)
-    map(fit_file, gen_file_fit())
+    p = Pool()
+    p.map(fit_file, gen_file_fit)
+    # map(fit_file, gen_file_fit())
 
 
 
