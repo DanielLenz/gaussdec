@@ -44,7 +44,7 @@ def fit_file(args):
 
 def gen_file_fit():
     # get filenames
-    filenames = glob.glob('ebhis_hpx_1024*112of192_G7.fits')
+    filenames = glob.glob('/vol/arc1/archive/bwinkel/EBHIShpx/ebhis_hpx_1024*of192_G7.fits')
     
     # set default parameters
     p = default_p
