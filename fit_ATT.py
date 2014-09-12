@@ -15,8 +15,9 @@ from . import fit_spectrum, make_multi_gaussian_model, default_p
 def fit_file(args):
 
     filename, p = args
-    outname = os.path.splitext(filename)[0] + '_fits.gzjs'
-
+    # outname = os.path.splitext(filename)[0] + '_fits.gzjs'
+    outname = os.path.basename(filename) + '_fits.gzjs'
+    
     if not os.path.exists(outname):
 
         # create theano functions
