@@ -79,6 +79,63 @@ default_p = {
 }
 
 
+def propose_parameters(x, residual, p):
+
+    residual_sum = np.sum(residual)
+    residual_peak = x[np.argmax(residual)]
+    mean_dispersion = 3#np.sum(residual * x) / np.sum(residual)
+
+    return np.concatenate((p, [residual_sum, residual_peak, mean_dispersion]))
+
+
+def incremental_fit(y, objective, jacobian, stats, residual, p):
+
+    trim_mask = np.ones(y.shape[0], dtype=bool)
+    trim_mask[:p['trim']] = False
+    trim_mask[-p['trim']:] = False
+
+    x = np.arange(y.shape[0])
+    x = x[trim_mask]
+    y = y[trim_mask]
+
+    trial_components = range(p['min_components'], p['max_components'] + 1)
+
+    all_models = []
+
+    for n_components in trial_components:
+
+        if all_models:
+            pprev = all_models[-1][0]
+            r = residual(pprev, x, y)
+        else:
+            pprev = np.array([])
+            r = y
+
+        p0 = propose_parameters(x, r, pprev)
+
+        bounds = [
+                (p['int_low'], p['int_high']),
+                (None, None),
+                (p['sigma_low'], p['sigma_high']),
+            ] * n_components
+
+        result = minimize(objective, p0,
+            args=(x, y),
+            jac=jacobian,
+            bounds=bounds,
+            method=p['fit_method'])
+
+        all_models.append([result.x, stats(result.x, x, y), n_components])
+
+    all_models = sorted(all_models, key=lambda e: e[1][0])
+
+    t = all_models[0]
+    
+    result_keys = ['parameters', 'stats', 'components']
+    result_values = [t[0].tolist(), map(float, t[1]), int(t[2])]
+    return {k : v for k,v in zip(result_keys, result_values)}
+
+
 def fit_spectrum(y, objective, jacobian, stats, p):
 
     tmask = np.ones(y.shape[0], dtype=bool)
