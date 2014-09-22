@@ -141,6 +141,7 @@ def fit_spectrum(y, objective, jacobian, stats, p):
     tmask = np.ones(y.shape[0], dtype=bool)
     tmask[:p['trim']] = False
     tmask[-p['trim']:] = False
+    tmask &= np.isfinite(y)
 
     x = np.arange(y.shape[0])
     x = x[tmask]

@@ -15,8 +15,8 @@ from fitting import fit_spectrum, make_multi_gaussian_model, default_p
 def fit_file(args):
 
     filename, p = args
-    outname = os.path.splitext(filename)[0] + '_fits.gzjs'
-
+    outname = os.path.basename(filename) + '_fits.gzjs'
+    
     if not os.path.exists(outname):
 
         # create theano functions
@@ -44,7 +44,7 @@ def fit_file(args):
 
 def gen_file_fit():
     # get filenames
-    filenames = glob.glob('ebhis_hpx_1024*112of192_G7.fits')
+    filenames = glob.glob('/vol/arc1/archive/bwinkel/EBHIShpx/ebhis_hpx_1024*of192_G7.fits')
     
     # set default parameters
     p = default_p
@@ -56,9 +56,9 @@ def gen_file_fit():
 if __name__ == '__main__':
 
     # fit a single file
-    # p = Pool()
-    # p.apply(fit_file, gen_file_fit)
-    map(fit_file, gen_file_fit())
+    p = Pool()
+    p.map(fit_file, gen_file_fit())
+    # map(fit_file, gen_file_fit())
 
 
 
