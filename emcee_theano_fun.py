@@ -6,6 +6,50 @@ import numpy as np
 import emcee
 
 import healpy
+import pylab as pl
+
+default_hpars_partial = {
+    'mu_cold' : {
+        'mu' : 1.7,
+        'sigma' : 1.0,
+    },
+    'sigma_cold' : {
+        'x_min' : 1e-1,
+        'x_max' : 1e+1,
+    },
+    'mu_warm' : {
+        'mu' : 0.7,
+        'sigma' : 1.0,
+    },
+    'sigma_warm' : {
+        'x_min' : 1e-1,
+        'x_max' : 1e+1,
+    },
+    'sigma_model' : {
+        'x_min' : 1e-1,
+        'x_max' : 1e+1,
+    },
+}
+
+default_hpars_pooled = {
+    'epsilon_cold' : {
+        'mu' : 1.7,
+        'sigma' : 1.,
+    },
+    'epsilon_warm' : {
+        'mu' : 0.7,
+        'sigma' : 1.,
+    },
+    'offset' : {
+        'mu' : 0,
+        'sigma' : 3,
+    },
+    'sigma_model' : {
+        'x_min' : 1e-1,
+        'x_max' : 1e+1,
+    }
+}
+
 
 def t_gauss_lnlike(x, mu, sigma):
     return -0.5 * (x - mu) ** 2 / sigma ** 2 - T.log(sigma)
@@ -78,7 +122,7 @@ def compile_pooled_lnlike(hpars):
     sigma_model_lnprior = t_uniform_lnlike(sigma_model, **hpars['sigma_model'])
 
     mu_model = epsilon_cold * cold + epsilon_warm * warm + offset
-    model = T.sum(t_gauss_lnlike(tau, mu_model, sigma_model))
+    model = T.sum(t_gumbel_lnlike(tau, mu_model, sigma_model))
 
     likelihood = sum([model,
         epsilon_cold_lnprior,
@@ -168,57 +212,32 @@ def make_sampler(tau, cold, warm, hpars, n_walkers=500, lntype=pooled_lnlike):
     return sampler, p0
 
 
+def superpixel_mask(nside, steps):
+
+    idx = np.arange(healpy.nside2npix(nside))
+    m = np.right_shift(idx, 2 * steps)
+
+    return m
+
+
 if __name__ == '__main__':
 
-    tau, cold, warm, mask = get_data()
+    cold, warm, tau, mask = get_data()
+    sp_mask = superpixel_mask(1024, 5)
+    pixel = 40
 
-    tau_s  = tau[mask][::10000]
-    cold_s = cold[mask][::10000]
-    warm_s = warm[mask][::10000]
+    tau_s  = tau[mask & (sp_mask == pixel)]
+    cold_s = cold[mask & (sp_mask == pixel)]
+    warm_s = warm[mask & (sp_mask == pixel)]
 
-    hpars_partial = {
-        'mu_cold' : {
-            'mu' : 1.7,
-            'sigma' : 1.0,
-        },
-        'sigma_cold' : {
-            'x_min' : 1e-2,
-            'x_max' : 1e+2,
-        },
-        'mu_warm' : {
-            'mu' : 0.7,
-            'sigma' : 1.0,
-        },
-        'sigma_warm' : {
-            'x_min' : 1e-2,
-            'x_max' : 1e+2,
-        },
-        'sigma_model' : {
-            'x_min' : 1e-2,
-            'x_max' : 1e+2,
-        },
-    }
+    sampler, p0 = make_sampler(tau_s, cold_s, warm_s, default_hpars_pooled)
+    sampler.run_mcmc(p0, 500)
 
-    hpars_pooled = {
-        'epsilon_cold' : {
-            'mu' : 1.7,
-            'sigma' : 3.,
-        },
-        'epsilon_warm' : {
-            'mu' : 0.7,
-            'sigma' : 3.,
-        },
-        'offset' : {
-            'mu' : 0,
-            'sigma' : 3,
-        },
-        'sigma_model' : {
-            'x_min' : 1e-2,
-            'x_max' : 1e+2,
-        }
-    }
-    
-    sampler, p0 = make_sampler(tau_s, cold_s, warm_s, hpars_pooled)
+    for i in xrange(4):
+        pl.figure()
+        pl.subplot(211)
+        pl.plot(sampler.chain[:,:,i].T, color='k', alpha=0.1)
+        pl.subplot(212)
+        pl.hist(sampler.chain[:,200:,i].ravel(), bins=100)
 
-    for pos, lnprob, rstate in sampler.sample(p0, iterations=10):
-        print lnprob
+    pl.show()
