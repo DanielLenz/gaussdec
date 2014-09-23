@@ -66,6 +66,52 @@ def compile_partial_pooling_lnlike(hpars):
     return likelihood_function
 
 
+def compile_pooled_lnlike(hpars):
+
+    p, tau, cold, warm = T.vectors(4)
+
+    epsilon_cold, epsilon_warm, offset, sigma_model = p[0], p[1], p[2], p[3]
+
+    epsilon_cold_lnprior = t_gauss_lnlike(epsilon_cold, **hpars['epsilon_cold'])
+    epsilon_warm_lnprior = t_gauss_lnlike(epsilon_warm, **hpars['epsilon_warm'])
+    offset_lnprior = t_gauss_lnlike(offset, **hpars['offset'])
+    sigma_model_lnprior = t_uniform_lnlike(sigma_model, **hpars['sigma_model'])
+
+    mu_model = epsilon_cold * cold + epsilon_warm * warm + offset
+    model = T.sum(t_gauss_lnlike(tau, mu_model, sigma_model))
+
+    likelihood = sum([model,
+        epsilon_cold_lnprior,
+        epsilon_warm_lnprior,
+        offset_lnprior,
+        sigma_model_lnprior])
+
+    likelihood_function = theano.function(inputs=[p, tau, cold, warm], outputs=likelihood)
+
+    return likelihood_function
+
+
+def pooled_lnlike(tau, cold, warm, hpars):
+
+    n_values = tau.size
+    n_dim = 4
+
+    likelihood = compile_pooled_lnlike(hpars)
+
+    def lnfun(p):
+        l = likelihood(p, tau, cold, warm)
+        return l if np.isfinite(l) else -np.inf
+
+    def dfun():
+        return np.concatenate([
+            gauss_rand(**hpars['epsilon_cold']),
+            gauss_rand(**hpars['epsilon_warm']),
+            gauss_rand(**hpars['offset']),
+            uniform_rand(**hpars['sigma_model'])])
+
+    return lnfun, dfun, n_dim, n_values
+
+
 def partial_pooling_lnlike(tau, cold, warm, hpars):
 
     n_values = tau.size
@@ -110,9 +156,9 @@ def get_data(nested=False):
     return cold, warm, tau, mask
 
 
-def make_sampler(tau, cold, warm, hpars):
+def make_sampler(tau, cold, warm, hpars, lntype=pooled_lnlike):
 
-    likelihood_fn, init_fn, n_dim, n_values = partial_pooling_lnlike(tau, cold, warm, hpars)
+    likelihood_fn, init_fn, n_dim, n_values = lntype(tau, cold, warm, hpars)
     
     n_walkers = n_dim * 2
     p0 = [init_fn() for i in xrange(n_walkers)]
@@ -130,7 +176,7 @@ if __name__ == '__main__':
     cold_s = cold[mask][::10000]
     warm_s = warm[mask][::10000]
 
-    hpars = {
+    hpars_partial = {
         'mu_cold' : {
             'mu' : 1.7,
             'sigma' : 1.0,
@@ -152,5 +198,25 @@ if __name__ == '__main__':
             'x_max' : 1e+2,
         },
     }
+
+    hpars_pooled = {
+        'epsilon_cold' : {
+            'mu' : 1.7,
+            'sigma' : 3.,
+        },
+        'epsilon_warm' : {
+            'mu' : 0.7,
+            'sigma' : 3.,
+        },
+        'offset' : {
+            'mu' : 0,
+            'sigma' : 3,
+        },
+        'sigma_model' : {
+            'x_min' : 1e-2,
+            'x_max' : 1e+2,
+        }
+    }
     
-    sampler, p0 = make_sampler(tau_s, cold_s, warm_s, hpars)
+    sampler, p0 = make_sampler(tau_s, cold_s, warm_s, hpars_pooled)
+    sampler.run_mcmc(p0, 500)
