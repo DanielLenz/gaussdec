@@ -156,11 +156,11 @@ def get_data(nested=False):
     return cold, warm, tau, mask
 
 
-def make_sampler(tau, cold, warm, hpars, lntype=pooled_lnlike):
+def make_sampler(tau, cold, warm, hpars, n_walkers=500, lntype=pooled_lnlike):
 
     likelihood_fn, init_fn, n_dim, n_values = lntype(tau, cold, warm, hpars)
     
-    n_walkers = n_dim * 2
+    n_walkers = max(n_dim * 2, n_walkers)
     p0 = [init_fn() for i in xrange(n_walkers)]
 
     sampler = emcee.EnsembleSampler(n_walkers, n_dim, likelihood_fn)
@@ -219,4 +219,6 @@ if __name__ == '__main__':
     }
     
     sampler, p0 = make_sampler(tau_s, cold_s, warm_s, hpars_pooled)
-    sampler.run_mcmc(p0, 500)
+
+    for pos, lnprob, rstate in sampler.sample(p0, iterations=10):
+        print lnprob
