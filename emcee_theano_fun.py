@@ -33,12 +33,12 @@ default_hpars_partial = {
 
 default_hpars_pooled = {
     'epsilon_cold' : {
-        'mu' : 1.7,
-        'sigma' : 1.,
+        'x_min' : 0.,
+        'x_max' : 2.,
     },
     'epsilon_warm' : {
-        'mu' : 0.7,
-        'sigma' : 1.,
+        'x_min' : 0.,
+        'x_max' : 2.,
     },
     'offset' : {
         'mu' : 0,
@@ -116,8 +116,8 @@ def compile_pooled_lnlike(hpars):
 
     epsilon_cold, epsilon_warm, offset, sigma_model = p[0], p[1], p[2], p[3]
 
-    epsilon_cold_lnprior = t_gauss_lnlike(epsilon_cold, **hpars['epsilon_cold'])
-    epsilon_warm_lnprior = t_gauss_lnlike(epsilon_warm, **hpars['epsilon_warm'])
+    epsilon_cold_lnprior = t_uniform_lnlike(epsilon_cold, **hpars['epsilon_cold'])
+    epsilon_warm_lnprior = t_uniform_lnlike(epsilon_warm, **hpars['epsilon_warm'])
     offset_lnprior = t_gauss_lnlike(offset, **hpars['offset'])
     sigma_model_lnprior = t_uniform_lnlike(sigma_model, **hpars['sigma_model'])
 

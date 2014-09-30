@@ -102,7 +102,7 @@ def reconstruct(source, method='fixed'):
         return maximum_correlation(fitresults, source)
 
 
-def gzjs2pickle():
+def gzjs2pickle(source):
     """
     Not in active use, converts the numerous json files to a single pickle
     """
