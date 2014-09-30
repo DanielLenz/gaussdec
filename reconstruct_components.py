@@ -49,33 +49,6 @@ def get_hi_model(fitresults, func, npix=hp.nside2npix(2**10)):
                                 ))
     return hi_model
 
-def get_corr_coeffs(fitresults, dust, npix, mask, s_thresh):
-    hi_model = get_hi_model(fitresults, s_thresh)
-
-    rho, p = stats.spearmanr(a=hi_model[mask], b=dust[mask], axis=None)
-
-    return rho
-
-def maximum_correlation(fitresults, source, npix=hp.nside2npix(2**10)):
-    
-    # load dust data for correlation
-    tau_full = hp.read_map(source + 'opacity_10.83.hpx.fits', dtype=np.float32)
-    tau = hp.ud_grade(tau_full, nside)
-
-    # create mask for fitted hpxindices
-    hpxindices = np.array(fitresults.keys(), dtype=int)
-    mask = get_mask(hpxindices, nside=nside)
-
-    # create theano functions
-    f_model, f_residual, f_objective, f_jacobian, f_stats = make_multi_gaussian_model()
-    
-    get_corr_coeffs_par = partial(get_corr_coeffs, fitresults, tau, npix, mask)
-    
-    # determine correlation coefficients, depending on the line-widths used
-    s_threshs = np.linspace(1.5, 6., 15.)
-    corr_coeffs = map(get_corr_coeffs_par, s_threshs)
-
-    # return (cold_comp, warm_comp)
 
 def fixed(fitresults):
     """
@@ -92,14 +65,12 @@ def fixed(fitresults):
 
     return components
 
+
 def reconstruct(source, method='fixed'):
     fitresults = cPickle.load(open(source + 'fitresults.b', 'rb'))
     
     if method == 'fixed':
         return fixed(fitresults)
-
-    if method == 'maxcorr':
-        return maximum_correlation(fitresults, source)
 
 
 def gzjs2pickle(source):
@@ -114,7 +85,7 @@ def gzjs2pickle(source):
     for filename in result_filenames:
         fitresults.update(json.load(gzip.GzipFile(filename)))
 
-    cPickle.dump(fitresults, open('fitresults.b', 'wb'), protocol=2)
+    cPickle.dump(fitresults, open(source + 'fitresults.b', 'wb'), protocol=2)
 
 if __name__ == '__main__':
     pass
