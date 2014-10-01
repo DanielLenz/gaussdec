@@ -32,13 +32,21 @@ default_hpars_partial = {
 }
 
 default_hpars_pooled = {
-    'epsilon_cold' : {
+    'epsilon_cold_uni' : {
         'x_min' : 0.,
-        'x_max' : 2.,
+        'x_max' : 10.,
     },
-    'epsilon_warm' : {
+    'epsilon_cold_gauss' : {
+        'mu' : 1.7,
+        'sigma' : 1.,
+    },
+    'epsilon_warm_uni' : {
         'x_min' : 0.,
-        'x_max' : 2.,
+        'x_max' : 10.,
+    },
+    'epsilon_warm_gauss' : {
+        'mu' : 0.7,
+        'sigma' : 1.5,
     },
     'offset' : {
         'mu' : 0,
@@ -116,8 +124,12 @@ def compile_pooled_lnlike(hpars):
 
     epsilon_cold, epsilon_warm, offset, sigma_model = p[0], p[1], p[2], p[3]
 
-    epsilon_cold_lnprior = t_uniform_lnlike(epsilon_cold, **hpars['epsilon_cold'])
-    epsilon_warm_lnprior = t_uniform_lnlike(epsilon_warm, **hpars['epsilon_warm'])
+    epsilon_cold_lnprior_uni = t_uniform_lnlike(epsilon_cold, **hpars['epsilon_cold_uni'])
+    epsilon_cold_lnprior_gauss = t_gauss_lnlike(epsilon_cold, **hpars['epsilon_cold_gauss'])
+    
+    epsilon_warm_lnprior_uni = t_uniform_lnlike(epsilon_warm, **hpars['epsilon_warm_uni'])
+    epsilon_warm_lnprior_gauss = t_gauss_lnlike(epsilon_warm, **hpars['epsilon_warm_gauss'])
+
     offset_lnprior = t_gauss_lnlike(offset, **hpars['offset'])
     sigma_model_lnprior = t_uniform_lnlike(sigma_model, **hpars['sigma_model'])
 
@@ -125,8 +137,10 @@ def compile_pooled_lnlike(hpars):
     model = T.sum(t_gumbel_lnlike(tau, mu_model, sigma_model))
 
     likelihood = sum([model,
-        epsilon_cold_lnprior,
-        epsilon_warm_lnprior,
+        epsilon_cold_lnprior_uni,
+        epsilon_cold_lnprior_gauss,
+        epsilon_warm_lnprior_uni,
+        epsilon_warm_lnprior_gauss,
         offset_lnprior,
         sigma_model_lnprior])
 
@@ -148,8 +162,8 @@ def pooled_lnlike(tau, cold, warm, hpars):
 
     def dfun():
         return np.concatenate([
-            gauss_rand(**hpars['epsilon_cold']),
-            gauss_rand(**hpars['epsilon_warm']),
+            np.maximum(0, gauss_rand(**hpars['epsilon_cold_gauss'])),
+            np.maximum(0, gauss_rand(**hpars['epsilon_warm_gauss'])),
             gauss_rand(**hpars['offset']),
             uniform_rand(**hpars['sigma_model'])])
 

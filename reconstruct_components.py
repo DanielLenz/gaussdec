@@ -12,6 +12,8 @@ import cPickle
 
 import healpy as hp
 
+from mathlib import mathfuncs as mf
+
 def get_mask(indices, nside):
     npix = hp.nside2npix(nside)
     
@@ -50,6 +52,31 @@ def get_hi_model(fitresults, func, npix=hp.nside2npix(2**10)):
     return hi_model
 
 
+def continuous(fitresults, x0=2., tau=0.3):
+
+    def get_model_logi(fitresults, x0, tau, npix=hp.nside2npix(2**10)):
+        hi_cold = np.zeros(npix, dtype=np.float32)
+        hi_warm = np.zeros(npix, dtype=np.float32)
+
+        for k, v in fitresults.iteritems():
+            p = np.array(v['parameters'])
+            for comp in p.reshape(p.size/3, 3):
+                hi_cold[int(k)] += comp[0] * mf.logistic(comp[2], x0, -tau)
+                hi_warm[int(k)] += comp[0] * mf.logistic(comp[2], x0, tau)
+
+        return hi_cold, hi_warm
+
+    # convert to cm**-2, 1.288 is EBHIS chanwidth
+    to_coldens = 1.82e18 * 1.288
+
+    components = {}
+    components['cold'], components['warm'] = get_model_logi(fitresults, x0=2., tau=0.3)
+    components['cold'] *= to_coldens
+    components['warm'] *= to_coldens
+
+    return components
+
+
 def fixed(fitresults):
     """
     Use a fixed threshold in line width to reconstruct
@@ -71,6 +98,9 @@ def reconstruct(source, method='fixed'):
     
     if method == 'fixed':
         return fixed(fitresults)
+
+    if method = 'continuous':
+        return continuous(fitresults, tau=0.3)
 
 
 def gzjs2pickle(source):
