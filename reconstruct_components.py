@@ -93,13 +93,21 @@ def fixed(fitresults):
     return components
 
 
-def reconstruct(source, method='fixed'):
+def reconstruct(source, method='fixed', min_b=30.):
     fitresults = cPickle.load(open(source + 'fitresults.b', 'rb'))
+
+    hpxindices = fitresults.keys()
+    for k in hpxindices:
+        theta, glon = np.rad2deg(hp.pix2ang(1024, int(k), nest=False))
+        glat = 90. - theta
+        if np.abs(glat) < min_b:
+            fitresults.pop(k)
+
     
     if method == 'fixed':
         return fixed(fitresults)
 
-    if method = 'continuous':
+    if method == 'continuous':
         return continuous(fitresults, tau=0.3)
 
 
