@@ -102,7 +102,6 @@ def reconstruct(source, method='fixed', min_b=30.):
         glat = 90. - theta
         if np.abs(glat) < min_b:
             fitresults.pop(k)
-
     
     if method == 'fixed':
         return fixed(fitresults)
