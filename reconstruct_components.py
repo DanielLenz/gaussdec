@@ -9,6 +9,7 @@ from functools import partial
 from scipy import stats
 from multiprocessing import Pool
 import cPickle
+import tables
 
 import healpy as hp
 
@@ -109,20 +110,6 @@ def reconstruct(source, method='fixed', min_b=30.):
     if method == 'continuous':
         return continuous(fitresults, tau=0.3)
 
-
-def gzjs2pickle(source):
-    """
-    Not in active use, converts the numerous json files to a single pickle
-    """
-
-    # load fitresults from json zip files
-    result_filenames = glob.glob(source + '*.gzjs')
-
-    fitresults = {}
-    for filename in result_filenames:
-        fitresults.update(json.load(gzip.GzipFile(filename)))
-
-    cPickle.dump(fitresults, open(source + 'fitresults.b', 'wb'), protocol=2)
 
 if __name__ == '__main__':
     pass
