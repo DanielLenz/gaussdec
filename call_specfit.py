@@ -40,7 +40,7 @@ def fit_file(args):
 
 def gen_file_fit(args):
     # get filenames
-    filenames = glob.glob(args.glob)
+    filenames = glob.glob(args.glob)[:5]
 
     # set default parameters
     p = default_p
