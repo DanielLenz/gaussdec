@@ -76,12 +76,18 @@ def do_fit(row_index):
     return row_index, fitresults
 
 
-def get_row_index(table):
-    for row_index in range(table.nrows):
-        if not (row_index % 10000):
-            print 'Working on row {i} of {n}...'.format(i=row_index, n=table.nrows)
-        yield row_index
-
+def get_row_index(nsamples, table):
+    if nsamples < 0:
+        for row_index in range(table.nrows):
+            if not (row_index % 10000):
+                print 'Working on row {i} of {n}...'.format(i=row_index, n=table.nrows)
+            yield row_index
+    else:
+        sample_indices = np.random.choice(range(table.nrows), size=nsamples, replace=False)
+        for i, row_index in enumerate(sample_indices):
+            if not (i % 1000):
+                print 'Working on row {i} of {n}...'.format(i=i, n=nsamples)
+            yield row_index
 
 def fit_spectra(args):
 
@@ -94,7 +100,7 @@ def fit_spectra(args):
         ebhis_smile = tables.open_file(args.infile, mode="r", title="EBHIS")
         ebhis_table = ebhis_smile.root.ebhis
 
-        for row_index, fitresults in p.imap(do_fit, get_row_index(ebhis_table)): 
+        for row_index, fitresults in p.imap(do_fit, get_row_index(args.nsamples, ebhis_table)): 
             
             hpxindex = ebhis_table[row_index]['HPXINDEX']
             glon = ebhis_table[row_index]['GLON']
@@ -132,10 +138,15 @@ if __name__ == '__main__':
                 help='Survey that is used for the decomposition.',
                 type=str)
     argp.add_argument('-i', '--infile',
-                default='/vol/ebhis2/data1/dlenz/projects/ebhis2pytable/data/ebhis.h5',
+                default='/vol/ebhis1/data1/dlenz/projects/ebhis2pytable/data/ebhis.h5',
                 metavar='infile',
                 help='Source pytable.',
                 type=str)
+    argp.add_argument('-n', '--nsamples',
+                default=-1,
+                metavar='nsamples',
+                help='Number of random sightlines that are fitted.',
+                type=int)
     argp.add_argument('outname',
                 metavar='output_filename',
                 type=str)
