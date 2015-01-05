@@ -153,7 +153,7 @@ def fit_spectra(arguments):
         pool = Pool(
             30,
             initializer=initializer,
-            initarguments=(arguments.infile,))
+            initargs=(arguments.infile,))
 
         ebhis_store = tables.open_file(arguments.infile, mode="r", title="EBHIS")
         ebhis_table = ebhis_store.root.ebhis
