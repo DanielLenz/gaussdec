@@ -81,7 +81,7 @@ def inspect_spectra(data_table, model_table, nsamples, x_model):
 
         # model
         gauss_params = np.array([[row['amplitude'], row['center_kms'], row['width_kms']] for row in model_table.where("""hpxindex=={}""".format(sample_index))])
-        model_spectra.append(f_model(gauss_params.flatten(), x_model*1.e3)[1])
+        model_spectra.append(CDELT3 * f_model(gauss_params.flatten(), x_model)[1])
 
     return spectra, model_spectra
 
@@ -103,7 +103,7 @@ def main():
     argp.add_argument(
         '-d',
         '--data',
-        default='/vol/ebhis1/data1/dlenz/projects/ebhis2pytable/data/ebhis.h5',
+        default='/users/dlenz/projects/ebhis2pytable/data/ebhis.h5',
         metavar='infile',
         help='Data pytable',
         type=str)
