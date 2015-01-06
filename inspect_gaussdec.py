@@ -1,6 +1,8 @@
 """
 Inspect the Gaussian decomposition of EBHIS and GASS
+"""
 
+"""
 Functions
 ---------
 
@@ -10,6 +12,8 @@ inspect_spectra(data_table, model_table, nsamples) : Inspect a given, random
 
 import tables
 import numpy as np
+import matplotlib
+matplotlib.use('TkAgg')
 import pylab as pl
 import argparse
 
@@ -93,7 +97,6 @@ def main():
     argp.add_argument(
         '-g',
         '--gaussdec',
-        metavar='gaussdec',
         help='location of the Gaussian decomposition',
         type=str)
 
@@ -109,7 +112,6 @@ def main():
         '-n',
         '--nsamples',
         default=5,
-        metavar='nsamples',
         help='Number of random sightlines that are inspected',
         type=int)
 
