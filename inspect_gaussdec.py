@@ -81,7 +81,7 @@ def inspect_spectra(data_table, model_table, nsamples, x_model):
 
         # model
         gauss_params = np.array([[row['amplitude'], row['center_kms'], row['width_kms']] for row in model_table.where("""hpxindex=={}""".format(sample_index))])
-        model_spectra.append(f_model(gauss_params.flatten(), x_model)[1])
+        model_spectra.append(f_model(gauss_params.flatten(), x_model*1.e3)[1])
 
     return spectra, model_spectra
 
