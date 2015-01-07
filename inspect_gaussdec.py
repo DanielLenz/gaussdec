@@ -81,7 +81,7 @@ def inspect_spectra(data_table, model_table, nsamples, x_model):
 
         # model
         gauss_params = np.array([[row['amplitude'], row['center_kms'], row['width_kms']] for row in model_table.where("""hpxindex=={}""".format(sample_index))])
-        model_spectra.append(CDELT3 * f_model(gauss_params.flatten(), x_model)[1])
+        model_spectra.append(CDELT3 / 1.e3 * f_model(gauss_params.flatten(), x_model)[1])
 
     return spectra, model_spectra
 
@@ -101,9 +101,17 @@ def main():
         type=str)
 
     argp.add_argument(
+        '-s',
+        '--survey',
+        default='EBHIS',
+        choices=['GASS', 'EBHIS'],
+        help='Survey that is used for the decomposition',
+        type=str)    
+
+    argp.add_argument(
         '-d',
         '--data',
-        default='/users/dlenz/projects/ebhis2pytable/data/ebhis.h5',
+        default='/users/dlenz/projects/survey2pytable/data/ebhis.h5',
         metavar='infile',
         help='Data pytable',
         type=str)
@@ -118,24 +126,25 @@ def main():
     args = argp.parse_args()
 
     # load tables
-    gdec_store = tables.open_file(args.gaussdec, mode="r", title="Gaussdec")
-    gdec = gdec_store.root.gaussdec_ebhis
+    gdec_store = tables.open_file(args.gaussdec)
+    if args.survey == 'EBHIS':
+        gdec = gdec_store.root.gaussdec_ebhis
+    else:
+        gdec = gdec_store.root.gaussdec_gass
 
-    ebhis_store = tables.open_file(
-        args.data,
-        mode="r")
-    ebhis = ebhis_store.root.ebhis
+    data_store = tables.open_file(args.data)
+    data = data_store.root.survey
 
     # inspect reconstruction
     # hi_model = reconstruct_coldens(table=gdec)
     # hp.mollview(hi_model, xsize=4000.)
 
-    # inspect spectra
-    x_data = chan2velo(np.arange(945))
-    x_model = np.linspace(-500.e3, 500.e3, 1e4)
+    # velocity axis in km/s
+    x_data = chan2velo(np.arange(945)) / 1.e3
+    x_model = np.linspace(-500., 500., 1e4)
 
     spectra, model_spectra = inspect_spectra(
-        data_table=ebhis,
+        data_table=data,
         model_table=gdec,
         nsamples=10,
         x_model=x_model)

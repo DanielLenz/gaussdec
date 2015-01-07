@@ -5,18 +5,18 @@ Generate a Gaussian decomposition of spectra, based on and written to hd5-files
 """
 Functions
 ---------
-create_tables(args) : If table exists, abort. Else, create a new hdf5-table
+create_tables(args) : If the table exists, abort. Else, create a new hdf5-table
     where the decomposition is saved.
 initializer(infile) : Prepare the Gaussian model and the input file, needed for
     multiprocessing
 do_fit(row_index) : Fit a given row of the input file
 get_row_index(nsamples, table) : Yield all the rows of the input file or a
     randomly chosen sample
-fit_spectra(args) : Reads the input file, creates the pool,
-    assigns the fitting jobs and write to results to disk
+fit_spectra(args) : Read the input file, create the pool,
+    assign the fitting jobs and write the results to disk
 """
 
-from multiprocessing import Pool
+from multiprocessing import Pool, cpu_count
 import argparse
 import os
 import tables
@@ -29,61 +29,75 @@ from specfitting import fit_spectrum, make_multi_gaussian_model, default_p
 CRPIX3 = 471.921630003202
 CDELT3 = 1288.23448620083
 
+
+class GaussDec(tables.IsDescription):
+    """
+    Description for the pytable, specifying the columns
+    and their data types
+    """
+    # coordinates
+    hpxindex = tables.Int32Col()
+    glon = tables.Float32Col()
+    glat = tables.Float32Col()
+
+    # Gauss fit parameters
+    amplitude = tables.Float32Col()
+
+    center_c = tables.Float32Col()
+    center_kms = tables.Float32Col()
+
+    width_c = tables.Float32Col()
+    width_kms = tables.Float32Col()
+
+
 def chan2velo(channel):
     """
-    Convert Channel to LSR velocity
+    Convert Channel to LSR velocity in m/s
     """
     return (channel - CRPIX3) * CDELT3
 
 
 def create_tables(arguments):
     """
-    If table exists, abort. Else, create a new hdf5-table where the
+    If the table exists, abort. Else, create a new hdf5-table where the
     decomposition is saved.
     """
 
-    # append to an existing h5file
-    if os.path.exists(arguments.outname):
-        warnings.warn('File {} already exists!'.format(arguments.outname))
-        return
-
-    # create a new h5file and append entries
+    # Read or create file
+    if os.path.isfile(arguments.outname):
+        warnings.warn('File {} already exists. Reading file...'.format(
+            arguments.outname))
+        store = tables.open_file(arguments.outname, mode="a")
     else:
-        print 'Creating file {} ...'.format(arguments.outname)
+        print "Creating file {}".format(arguments.outname)
+        store = tables.open_file(arguments.outname, mode="w")
 
-        class GaussDec(tables.IsDescription):
-            """
-            Description for the pytable, specifying the columns
-            and their data types
-            """
-            # coordinates
-            hpxindex = tables.Int32Col()
-            glon = tables.Float32Col()
-            glat = tables.Float32Col()
+    # check for existing tables
+    if arguments.survey == 'EBHIS':
+        if hasattr(store.root, 'gaussdec_ebhis') and not arguments.clobber:
+            raise IOError("Table for {} already exists.".format(
+                arguments.survey))
+        else:
+            ebhis = store.create_table(
+                store.root,
+                'gaussdec_ebhis',
+                GaussDec,
+                "Gauss decomposition EBHIS")
+            ebhis.cols.hpxindex.create_csindex()
+            ebhis.autoindex = True
 
-            # Gauss fit parameters
-            amplitude = tables.Float32Col()
-
-            center_c = tables.Float32Col()
-            center_kms = tables.Float32Col()
-
-            width_c = tables.Float32Col()
-            width_kms = tables.Float32Col()
-
-    with tables.open_file(arguments.outname, mode="w", title="Gaussdec") as store:
-        ebhis = store.create_table(
-            store.root,
-            'gaussdec_ebhis',
-            GaussDec,
-            "Gauss decomposition EBHIS")
-        ebhis.cols.hpxindex.create_csindex()
-        ebhis.autoindex = True
-
-        # gass = fobj.create_table(fobj.root,
-                                # 'gaussdec_gass',
-                                # GaussDec,
-                                # "Gauss decomposition GASS")
-        # gass.cols.hpxindex.create_csindex()
+    if arguments.survey == 'GASS':
+        if hasattr(store.root, 'gaussdec_gass') and not arguments.clobber:
+            raise IOError("Table for {} already exists.".format(
+                arguments.survey))
+        else:
+            gass = store.create_table(
+                store.root,
+                'gaussdec_gass',
+                GaussDec,
+                "Gauss decomposition GASS")
+            gass.cols.hpxindex.create_csindex()
+            gass.autoindex = True
 
     return 0
 
@@ -99,15 +113,19 @@ def initializer(infile):
     # create theano functions
     f_model, f_residual, f_objective, f_jacobian, f_stats = make_multi_gaussian_model()
 
-    global ebhis_file
-    ebhis_file = tables.open_file(infile, mode="r", title="EBHIS")
+    global store
+    store = tables.open_file(infile)
+
+    return None
 
 
 def do_fit(row_index):
     """
     Fit a given row of the input file
     """
-    row = ebhis_file.root.ebhis[row_index]
+    table = store.root.survey
+
+    row = table[row_index]
     fitresults = fit_spectrum(
         row['DATA'],
         f_objective,
@@ -143,42 +161,47 @@ def get_row_index(nsamples, table):
 
 def fit_spectra(arguments):
     """
-    Reads the input file, creates the pool, assigns the fitting jobs and write
-    to results to disk
+    Read the input file, create the pool, assign the fitting jobs and write
+    the results to disk
     """
     # create a pool, fit all files
-    with tables.open_file(arguments.outname, mode="a") as gaussdec_file:
-        gaussdec_table = gaussdec_file.root.gaussdec_ebhis
-
+    with tables.open_file(arguments.outname, mode="a") as gdec_store:
+    
         pool = Pool(
-            30,
+            # processes=cpu_count() - 1,
             initializer=initializer,
             initargs=(arguments.infile,))
+        
+        infile_store = tables.open_file(arguments.infile)
+        infile_table = infile_store.root.survey
 
-        ebhis_store = tables.open_file(arguments.infile, mode="r", title="EBHIS")
-        ebhis_table = ebhis_store.root.ebhis
+        if arguments.survey == 'EBHIS':
+            gdec_table = gdec_store.root.gaussdec_ebhis
+        else:
+            gdec_table = gdec_store.root.gaussdec_gass
 
-        for row_index, fitresults in pool.imap(do_fit, get_row_index(arguments.nsamples, ebhis_table)):
-            hpxindex = ebhis_table[row_index]['HPXINDEX']
-            glon = ebhis_table[row_index]['GLON']
-            glat = ebhis_table[row_index]['GLAT']
+        for row_index, fitresults in pool.imap(do_fit, get_row_index(arguments.nsamples, infile_table)):
+            hpxindex = infile_table[row_index]['HPXINDEX']
+            glon = infile_table[row_index]['GLON']
+            glat = infile_table[row_index]['GLAT']
 
             for i in range(len(fitresults)/3):
-                entry = gaussdec_table.row
+                entry = gdec_table.row
                 entry['hpxindex'] = hpxindex
                 entry['glon'] = glon
                 entry['glat'] = glat
 
                 entry['amplitude'] = fitresults[i * 3]
                 entry['center_c'] = fitresults[i * 3 + 1]
-                entry['center_kms'] = chan2velo(entry['center_c'])
+                entry['center_kms'] = chan2velo(entry['center_c']) / 1.e3
 
                 entry['width_c'] = fitresults[i * 3 + 2]
-                entry['width_kms'] = entry['width_c'] * CDELT3
+                entry['width_kms'] = entry['width_c'] * CDELT3 / 1.e3
 
                 entry.append()
 
-        gaussdec_table.flush()
+        gdec_table.flush()
+        infile_store.close()
 
     return 0
 
@@ -203,7 +226,7 @@ def main():
     argp.add_argument(
         '-i',
         '--infile',
-        default='/vol/ebhis1/data1/dlenz/projects/ebhis2pytable/data/ebhis.h5',
+        default='/vol/ebhis1/data1/dlenz/projects/survey2pytable/data/ebhis.h5',
         metavar='infile',
         help='Source pytable',
         type=str)
