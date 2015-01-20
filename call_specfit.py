@@ -200,7 +200,9 @@ def fit_spectra(arguments):
 
                 entry.append()
 
-        gdec_table.flush()
+            gdec_table.flush()
+            gdec_store.flush()
+            
         infile_store.close()
 
     return 0
