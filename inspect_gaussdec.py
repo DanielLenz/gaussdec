@@ -76,11 +76,10 @@ def inspect_spectra(data_table, model_table, nsamples, x_model):
     model_spectra = []
     for sample_index in sample_indices:
         # data
-        spectra.append(np.squeeze(
-            data_table.read_where("""HPXINDEX=={}""".format(sample_index))['DATA']))
+        spectra.append(np.squeeze(data_table[sample_index]))
 
         # model
-        gauss_params = np.array([[row['amplitude'], row['center_kms'], row['width_kms']] for row in model_table.where("""hpxindex=={}""".format(sample_index))])
+        gauss_params = np.array([[row['amplitude'], row['center_kms'], row['sigma_kms']] for row in model_table.where("""hpxindex=={}""".format(sample_index))])
         model_spectra.append(CDELT3 / 1.e3 * f_model(gauss_params.flatten(), x_model)[1])
 
     return spectra, model_spectra
@@ -95,23 +94,9 @@ def main():
     argp = argparse.ArgumentParser(description=__doc__)
 
     argp.add_argument(
-        '-g',
-        '--gaussdec',
-        help='location of the Gaussian decomposition',
-        type=str)
-
-    argp.add_argument(
-        '-s',
-        '--survey',
-        default='EBHIS',
-        choices=['GASS', 'EBHIS'],
-        help='Survey that is used for the decomposition',
-        type=str)    
-
-    argp.add_argument(
         '-d',
         '--data',
-        default='/users/dlenz/projects/survey2pytable/data/ebhis.h5',
+        default='/vol/ebhis2local/data1/dlenz/projects/survey2pytable/data/bps.h5',
         metavar='infile',
         help='Data pytable',
         type=str)
@@ -123,14 +108,16 @@ def main():
         help='Number of random sightlines that are inspected',
         type=int)
 
+    argp.add_argument(
+        'gaussdec',
+        help='location of the Gaussian decomposition',
+        type=str)
+
     args = argp.parse_args()
 
     # load tables
     gdec_store = tables.open_file(args.gaussdec)
-    if args.survey == 'EBHIS':
-        gdec = gdec_store.root.gaussdec_ebhis
-    else:
-        gdec = gdec_store.root.gaussdec_gass
+    gdec = gdec_store.root.gaussdec
 
     data_store = tables.open_file(args.data)
     data = data_store.root.survey

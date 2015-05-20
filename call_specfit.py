@@ -19,11 +19,16 @@ fit_spectra(args) : Read the input file, create the pool,
 from multiprocessing import Pool, cpu_count
 import argparse
 import os
+import healpy as hp
 import tables
+import itertools as it
 import numpy as np
 import warnings
 
 from specfitting import fit_spectrum, make_multi_gaussian_model, default_p
+
+store = tables.open_file('../survey2pytable/data/bps.h5')
+f_model, f_residual, f_objective, f_jacobian, f_stats = make_multi_gaussian_model()
 
 # ebhis standard spectral restframe
 CRPIX3 = 471.921630003202
@@ -46,8 +51,8 @@ class GaussDec(tables.IsDescription):
     center_c = tables.Float32Col()
     center_kms = tables.Float32Col()
 
-    width_c = tables.Float32Col()
-    width_kms = tables.Float32Col()
+    sigma_c = tables.Float32Col()
+    sigma_kms = tables.Float32Col()
 
 
 def chan2velo(channel):
@@ -64,40 +69,21 @@ def create_tables(arguments):
     """
 
     # Read or create file
-    if os.path.isfile(arguments.outname):
-        warnings.warn('File {} already exists. Reading file...'.format(
-            arguments.outname))
-        store = tables.open_file(arguments.outname, mode="a")
+    if os.path.isfile(arguments.outname) and not arguments.clobber:    
+        raise IOError('File {} already exists.'.format(arguments.outname))
     else:
         print "Creating file {}".format(arguments.outname)
-        store = tables.open_file(arguments.outname, mode="w")
+
+    store = tables.open_file(arguments.outname, mode="w")
 
     # check for existing tables
-    if arguments.survey == 'EBHIS':
-        if hasattr(store.root, 'gaussdec_ebhis') and not arguments.clobber:
-            raise IOError("Table for {} already exists.".format(
-                arguments.survey))
-        else:
-            ebhis = store.create_table(
-                store.root,
-                'gaussdec_ebhis',
-                GaussDec,
-                "Gauss decomposition EBHIS")
-            ebhis.cols.hpxindex.create_csindex()
-            ebhis.autoindex = True
-
-    if arguments.survey == 'GASS':
-        if hasattr(store.root, 'gaussdec_gass') and not arguments.clobber:
-            raise IOError("Table for {} already exists.".format(
-                arguments.survey))
-        else:
-            gass = store.create_table(
-                store.root,
-                'gaussdec_gass',
-                GaussDec,
-                "Gauss decomposition GASS")
-            gass.cols.hpxindex.create_csindex()
-            gass.autoindex = True
+    gaussdec = store.create_table(
+        store.root,
+        'gaussdec',
+        GaussDec,
+        "Gauss decomposition")
+    gaussdec.cols.hpxindex.create_csindex()
+    gaussdec.autoindex = True
 
     return 0
 
@@ -127,7 +113,7 @@ def do_fit(row_index):
 
     row = table[row_index]
     fitresults = fit_spectrum(
-        row['DATA'],
+        row,
         f_objective,
         f_jacobian,
         f_stats,
@@ -175,16 +161,13 @@ def fit_spectra(arguments):
         infile_store = tables.open_file(arguments.infile)
         infile_table = infile_store.root.survey
 
-        if arguments.survey == 'EBHIS':
-            gdec_table = gdec_store.root.gaussdec_ebhis
-        else:
-            gdec_table = gdec_store.root.gaussdec_gass
+        gdec_table = gdec_store.root.gaussdec
 
-        for row_index, fitresults in pool.imap(do_fit, get_row_index(arguments.nsamples, infile_table)):
-            hpxindex = infile_table[row_index]['HPXINDEX']
-            glon = infile_table[row_index]['GLON']
-            glat = infile_table[row_index]['GLAT']
-
+        for row_index, fitresults in it.imap(do_fit, get_row_index(arguments.nsamples, infile_table)):
+            hpxindex = row_index
+            theta, glon = np.rad2deg(hp.pix2ang(1024, hpxindex))
+            glat = 90. - theta
+            
             for i in range(len(fitresults)/3):
                 entry = gdec_table.row
                 entry['hpxindex'] = hpxindex
@@ -195,8 +178,8 @@ def fit_spectra(arguments):
                 entry['center_c'] = fitresults[i * 3 + 1]
                 entry['center_kms'] = chan2velo(entry['center_c']) / 1.e3
 
-                entry['width_c'] = fitresults[i * 3 + 2]
-                entry['width_kms'] = entry['width_c'] * CDELT3 / 1.e3
+                entry['sigma_c'] = fitresults[i * 3 + 2]
+                entry['sigma_kms'] = entry['sigma_c'] * CDELT3 / 1.e3
 
                 entry.append()
 
@@ -217,18 +200,9 @@ def main():
     argp = argparse.ArgumentParser(description=__doc__)
 
     argp.add_argument(
-        '-s',
-        '--survey',
-        default='EBHIS',
-        metavar='survey',
-        choices=['GASS', 'EBHIS'],
-        help='Survey that is used for the decomposition',
-        type=str)
-
-    argp.add_argument(
         '-i',
         '--infile',
-        default='/vol/ebhis1/data1/dlenz/projects/survey2pytable/data/ebhis.h5',
+        default='/vol/ebhis2local/data1/dlenz/projects/survey2pytable/data/bps.h5',
         metavar='infile',
         help='Source pytable',
         type=str)
@@ -242,17 +216,17 @@ def main():
         type=int)
 
     argp.add_argument(
-        'outname',
-        metavar='output_filename',
-        type=str)
-
-    argp.add_argument(
         '-c',
         '--clobber',
         default=False,
         metavar='clobber',
         help='clobber',
         type=bool)
+
+    argp.add_argument(
+        'outname',
+        metavar='output_filename',
+        type=str)
 
     args = argp.parse_args()
 
