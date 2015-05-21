@@ -36,7 +36,7 @@ def reconstruct_coldens(table):
     """
     Reconstruct a column density map of the full sky at nside=1024
     """
-    npix = hp.nside2npix(2**10)
+    npix = hp.nside2npix(1024)
     hi_model = np.zeros(npix, dtype=np.float32)
 
     for row in table:

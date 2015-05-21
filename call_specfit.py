@@ -23,12 +23,12 @@ import healpy as hp
 import tables
 import itertools as it
 import numpy as np
-import warnings
+from datetime import datetime
 
 from specfitting import fit_spectrum, make_multi_gaussian_model, default_p
 
-store = tables.open_file('../survey2pytable/data/bps.h5')
-f_model, f_residual, f_objective, f_jacobian, f_stats = make_multi_gaussian_model()
+# store = tables.open_file('../survey2pytable/data/bps.h5')
+# f_model, f_residual, f_objective, f_jacobian, f_stats = make_multi_gaussian_model()
 
 # ebhis standard spectral restframe
 CRPIX3 = 471.921630003202
@@ -122,26 +122,34 @@ def do_fit(row_index):
     return row_index, fitresults
 
 
-def get_row_index(nsamples, table):
+def get_row_index(nsamples, hpxindices, table):
     """
     Yield all the rows of the input file or a randomly chosen sample
     """
-    if nsamples < 0:
-        for row_index in range(table.nrows):
-            if not row_index % 10000:
-                print 'Working on row {i} of {n}...'.format(
-                    i=row_index,
-                    n=table.nrows)
-            yield row_index
-    else:
-        sample_indices = np.random.choice(
-            range(table.nrows),
-            size=nsamples,
-            replace=False)
+    if hpxindices == None:
 
-        for i, row_index in enumerate(sample_indices):
+        if nsamples < 0:
+            for row_index in range(table.nrows):
+                if not row_index % 10000:
+                    print 'Working on row {i} of {n}...'.format(
+                        i=row_index,
+                        n=table.nrows)
+                yield row_index
+        else:
+            sample_indices = np.random.choice(
+                range(table.nrows),
+                size=nsamples,
+                replace=False)
+
+            for i, row_index in enumerate(sample_indices):
+                if not i % 1000:
+                    print 'Working on row {i} of {n}...'.format(i=i, n=nsamples)
+                yield row_index
+    else:
+        indices = np.load(hpxindices)
+        for i, row_index in enumerate(indices):
             if not i % 1000:
-                print 'Working on row {i} of {n}...'.format(i=i, n=nsamples)
+                print 'Working on row {i} of {n}...'.format(i=i, n=len(indices))
             yield row_index
 
 
@@ -154,7 +162,6 @@ def fit_spectra(arguments):
     with tables.open_file(arguments.outname, mode="a") as gdec_store:
     
         pool = Pool(
-            # processes=cpu_count() - 1,
             initializer=initializer,
             initargs=(arguments.infile,))
         
@@ -163,7 +170,7 @@ def fit_spectra(arguments):
 
         gdec_table = gdec_store.root.gaussdec
 
-        for row_index, fitresults in it.imap(do_fit, get_row_index(arguments.nsamples, infile_table)):
+        for row_index, fitresults in pool.imap(do_fit, get_row_index(arguments.nsamples, arguments.hpxindices, infile_table)):
             hpxindex = row_index
             theta, glon = np.rad2deg(hp.pix2ang(1024, hpxindex))
             glat = 90. - theta
@@ -183,10 +190,11 @@ def fit_spectra(arguments):
 
                 entry.append()
 
-            gdec_table.flush()
-            gdec_store.flush()
+            if row_index % 1000 == 0:
+                gdec_store.flush()
             
         infile_store.close()
+        gdec_store.close()
 
     return 0
 
@@ -216,6 +224,14 @@ def main():
         type=int)
 
     argp.add_argument(
+        '-x',
+        '--hpxindices',
+        default=None,
+        metavar='hpxindices',
+        help='Location of a npy file that contains the hpx indices to fit',
+        type=str)
+
+    argp.add_argument(
         '-c',
         '--clobber',
         default=False,
@@ -239,7 +255,10 @@ def main():
 
 # main
 if __name__ == '__main__':
+    tstart = datetime.now()
     main()
+    print 'Runtime: {}'.format(datetime.now() - tstart)
+
 
 
 
