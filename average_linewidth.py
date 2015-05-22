@@ -40,7 +40,8 @@ def reconstruct_coldens(table, sigmas=[0., np.inf]):
 
 if __name__ == '__main__':
     # load gaussdec
-    store = tables.open_file('/vol/ebhis1/data1/dlenz/projects/gaussdec/data/camargo_gdec.h5', mode='r')
+    # store = tables.open_file('/vol/ebhis1/data1/dlenz/projects/gaussdec/data/camargo_gdec.h5', mode='r')
+    store = tables.open_file('/users/dlenz/projects/carmago/data/carmago_gdec.h5', mode='r')
     gaussdec = store.root.gaussdec
 
     weighted_linewidths = make_average_linewidth_map(gaussdec)
