@@ -16,12 +16,11 @@ fit_spectra(args) : Read the input file, create the pool,
     assign the fitting jobs and write the results to disk
 """
 
-from multiprocessing import Pool, cpu_count
+from multiprocessing import Pool
 import argparse
 import os
 import healpy as hp
 import tables
-import itertools as it
 import numpy as np
 from datetime import datetime
 
@@ -126,7 +125,7 @@ def get_row_index(nsamples, hpxindices, table):
     """
     Yield all the rows of the input file or a randomly chosen sample
     """
-    if hpxindices == None:
+    if hpxindices is None:
 
         if nsamples < 0:
             for row_index in range(table.nrows):
@@ -143,13 +142,13 @@ def get_row_index(nsamples, hpxindices, table):
 
             for i, row_index in enumerate(sample_indices):
                 if not i % 1000:
-                    print 'Working on row {i} of {n}...'.format(i=i, n=nsamples)
+                    print 'Working on row {i} of {n}..'.format(i=i, n=nsamples)
                 yield row_index
     else:
         indices = np.load(hpxindices)
         for i, row_index in enumerate(indices):
             if not i % 1000:
-                print 'Working on row {i} of {n}...'.format(i=i, n=len(indices))
+                print 'Working on row {i} of {n}..'.format(i=i, n=len(indices))
             yield row_index
 
 
@@ -160,21 +159,26 @@ def fit_spectra(arguments):
     """
     # create a pool, fit all files
     with tables.open_file(arguments.outname, mode="a") as gdec_store:
-    
+
         pool = Pool(
             initializer=initializer,
             initargs=(arguments.infile,))
-        
+
         infile_store = tables.open_file(arguments.infile)
         infile_table = infile_store.root.survey
 
         gdec_table = gdec_store.root.gaussdec
 
-        for row_index, fitresults in pool.imap(do_fit, get_row_index(arguments.nsamples, arguments.hpxindices, infile_table)):
+        for row_index, fitresults in pool.imap(
+            do_fit,
+            get_row_index(
+                arguments.nsamples,
+                arguments.hpxindices,
+                infile_table)):
             hpxindex = row_index
             theta, glon = np.rad2deg(hp.pix2ang(1024, hpxindex))
             glat = 90. - theta
-            
+
             for i in range(len(fitresults)/3):
                 entry = gdec_table.row
                 entry['hpxindex'] = hpxindex
@@ -192,7 +196,7 @@ def fit_spectra(arguments):
 
             if row_index % 1000 == 0:
                 gdec_store.flush()
-            
+
         infile_store.close()
         gdec_store.close()
 

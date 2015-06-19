@@ -6,16 +6,17 @@ from scipy.interpolate import interp1d
 from scipy.ndimage import gaussian_filter1d, binary_dilation
 from scipy.optimize import minimize
 
+
 def make_multi_gaussian_model(tsys=40.):
 
     x = T.vector('x')
     y = T.vector('y')
-    sx = x.dimshuffle(0,'x')
+    sx = x.dimshuffle(0, 'x')
 
     parameters = T.vector('parameters')
-    amplitudes = parameters[0::3].dimshuffle('x',0)
-    centers = parameters[1::3].dimshuffle('x',0)
-    dispersions = parameters[2::3].dimshuffle('x',0)
+    amplitudes = parameters[0::3].dimshuffle('x', 0)
+    centers = parameters[1::3].dimshuffle('x', 0)
+    dispersions = parameters[2::3].dimshuffle('x', 0)
 
     components = amplitudes / T.sqrt(2 * np.pi) / dispersions * T.exp(-0.5 * (sx - centers) * (sx - centers) / dispersions / dispersions)
     multigauss = T.sum(components, 1)
@@ -64,18 +65,18 @@ def initial_centers_pdf(coordinates, values, threshold=0.1, kernel=0., trim=10):
 
 
 default_p = {
-    'min_components' : 1,
-    'max_components' : 10,
-    'iterations' : 3,
-    'int_low' : 5e18 / 1.82e18 / 1.28,
-    'int_high' : 1e21 / 1.82e18 / 1.28,
-    'sigma_low' : np.sqrt(50 / 21.85) / 1.28 / 2.35,
-    'sigma_high' : np.sqrt(40000 / 21.85) / 1.28 / 2.35,
-    'pdf_threshold' : 0.05,
-    'pdf_kernel' : 3.32, 
-    'fit_method' : 'l-bfgs-b',
-    'trim' : 200,
-    'iteration_size' : 5,
+    'min_components': 1,
+    'max_components': 10,
+    'iterations': 3,
+    'int_low': 5e18 / 1.82e18 / 1.28,
+    'int_high': 1e21 / 1.82e18 / 1.28,
+    'sigma_low': np.sqrt(50 / 21.85) / 1.28 / 2.35,
+    'sigma_high': np.sqrt(40000 / 21.85) / 1.28 / 2.35,
+    'pdf_threshold': 0.05,
+    'pdf_kernel': 3.32,
+    'fit_method': 'l-bfgs-b',
+    'trim': 200,
+    'iteration_size': 5,
 }
 
 
@@ -90,7 +91,9 @@ def fit_spectrum(y, objective, jacobian, stats, p):
     x = x[tmask]
     y = y[tmask]
 
-    initial_centers, pdfmask = initial_centers_pdf(x, y,
+    initial_centers, pdfmask = initial_centers_pdf(
+        x,
+        y,
         threshold=p['pdf_threshold'],
         kernel=p['pdf_kernel'])
 
@@ -114,7 +117,9 @@ def fit_spectrum(y, objective, jacobian, stats, p):
                 (p['sigma_low'], p['sigma_high']),
             ] * n_components
 
-            result = minimize(objective, x0,
+            result = minimize(
+                objective,
+                x0,
                 args=(fit_x, fit_y),
                 jac=jacobian,
                 bounds=bounds,
@@ -123,19 +128,19 @@ def fit_spectrum(y, objective, jacobian, stats, p):
             yield result.x, stats(result.x, x, y), n_components
 
     trial_results = []
-    
+
     for iteration in xrange(p['iterations']):
-        
+
         trial_results.extend(trials())
-        
-        trial_results = sorted(trial_results, key=lambda k:k[1][0])
+
+        trial_results = sorted(trial_results, key=lambda k: k[1][0])
         component_trials = [t[2] for t in trial_results[:p['iteration_size']]]
-    
+
     t = trial_results[0]
-    
+
     result_keys = ['parameters', 'stats', 'components']
     result_values = [t[0].tolist(), map(float, t[1]), int(t[2])]
-    return {k : v for k,v in zip(result_keys, result_values)}
+    return {k: v for k, v in zip(result_keys, result_values)}
 
 
 
