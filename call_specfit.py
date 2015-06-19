@@ -16,6 +16,7 @@ fit_spectra(args) : Read the input file, create the pool,
     assign the fitting jobs and write the results to disk
 """
 
+import warnings
 from multiprocessing import Pool
 import argparse
 import os
@@ -68,8 +69,10 @@ def create_tables(arguments):
     """
 
     # Read or create file
-    if os.path.isfile(arguments.outname) and not arguments.clobber:    
-        raise IOError('File {} already exists.'.format(arguments.outname))
+    if os.path.isfile(arguments.outname) and not arguments.clobber:
+        warnings.warn('File {} already exists. Appending...'.format(
+            arguments.outname))
+        return
     else:
         print "Creating file {}".format(arguments.outname)
 
