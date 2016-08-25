@@ -1,3 +1,13 @@
+import tables
+import numpy as np
+import matplotlib
+import pylab as pl
+import argparse
+
+import healpy as hp
+
+from specfitting import make_multi_gaussian_model
+
 """
 Inspect the Gaussian decomposition of EBHIS and GASS
 """
@@ -10,20 +20,11 @@ inspect_spectra(data_table, model_table, nsamples) : Inspect a given, random
     number of spectra
 """
 
-import tables
-import numpy as np
-import matplotlib
-matplotlib.use('TkAgg')
-import pylab as pl
-import argparse
-
-import healpy as hp
-
-from specfitting import make_multi_gaussian_model
 
 # convert channels to m/s
 CRPIX3 = 471.921630003202
 CDELT3 = 1288.23448620083
+
 
 def chan2velo(channel):
     """
@@ -96,7 +97,7 @@ def main():
     argp.add_argument(
         '-d',
         '--data',
-        default='/vol/ebhis2local/data1/dlenz/projects/survey2pytable/data/bps.h5',
+        default='/vol/ebhis2local/data1/dlenz/projects/survey2pytable/data/HI4PI.h5',
         metavar='infile',
         help='Data pytable',
         type=str)
@@ -140,18 +141,10 @@ def main():
     for i, (spectrum, model_spectrum) in enumerate(zip(spectra, model_spectra)):
         pl.plot(x_data, spectrum + shift)
         pl.plot(x_model, model_spectrum + shift)
-        shift += np.nanmax(spectrum) 
+        shift += np.nanmax(spectrum)
 
     pl.show()
 
 
 if __name__ == '__main__':
     main()
-
-
-
-
-
-
-
-
