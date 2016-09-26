@@ -1,3 +1,15 @@
+import warnings
+from multiprocessing import Pool
+import argparse
+import os
+import sys
+import healpy as hp
+import tables
+import numpy as np
+from datetime import datetime
+
+from specfitting import fit_spectrum, make_multi_gaussian_model, default_p
+
 """
 Generate a Gaussian decomposition of spectra, based on and written to hd5-files
 """
@@ -15,20 +27,6 @@ get_row_index(nsamples, table) : Yield all the rows of the input file or a
 fit_spectra(args) : Read the input file, create the pool,
     assign the fitting jobs and write the results to disk
 """
-
-import warnings
-from multiprocessing import Pool
-import argparse
-import os
-import healpy as hp
-import tables
-import numpy as np
-from datetime import datetime
-
-from specfitting import fit_spectrum, make_multi_gaussian_model, default_p
-
-# store = tables.open_file('../survey2pytable/data/bps.h5')
-# f_model, f_residual, f_objective, f_jacobian, f_stats = make_multi_gaussian_model()
 
 # ebhis standard spectral restframe
 CRPIX3 = 471.921630003202
@@ -217,7 +215,7 @@ def main():
     argp.add_argument(
         '-i',
         '--infile',
-        default='/vol/ebhis2local/data1/dlenz/projects/survey2pytable/data/bps.h5',
+        default='/vol/ebhis2/data1/dlenz/projects/survey2pytable/data/HI4PI.h5',
         metavar='infile',
         help='Source pytable',
         type=str)
@@ -265,28 +263,3 @@ if __name__ == '__main__':
     tstart = datetime.now()
     main()
     print 'Runtime: {}'.format(datetime.now() - tstart)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
