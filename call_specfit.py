@@ -215,7 +215,7 @@ def main():
     argp.add_argument(
         '-i',
         '--infile',
-        default='/vol/ebhis2/data1/dlenz/projects/survey2pytable/data/HI4PI.h5',
+        default='/vol/ebhis2/data1/dlenz/projects/survey2pytable/data/HI4PI_DR1.h5',
         metavar='infile',
         help='Source pytable',
         type=str)
