@@ -141,12 +141,3 @@ def fit_spectrum(y, objective, jacobian, stats, p):
     result_keys = ['parameters', 'stats', 'components']
     result_values = [t[0].tolist(), map(float, t[1]), int(t[2])]
     return {k: v for k, v in zip(result_keys, result_values)}
-
-
-
-
-
-
-
-
-
