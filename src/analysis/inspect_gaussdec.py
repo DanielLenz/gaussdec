@@ -6,6 +6,8 @@ import argparse
 
 import healpy as hp
 
+from myhelpers.datasets import hi4pi
+
 from specfitting import make_multi_gaussian_model
 
 """
@@ -21,18 +23,6 @@ inspect_spectra(data_table, model_table, nsamples) : Inspect a given, random
 """
 
 
-# convert channels to m/s
-CRPIX3 = 471.921630003202
-CDELT3 = 1288.23448620083
-
-
-def chan2velo(channel):
-    """
-    Convert EBHIS channel number to LSR velocity in m/s
-    """
-    return (channel - CRPIX3) * CDELT3
-
-
 def reconstruct_coldens(table):
     """
     Reconstruct a column density map of the full sky at nside=1024
@@ -41,7 +31,7 @@ def reconstruct_coldens(table):
     hi_model = np.zeros(npix, dtype=np.float32)
 
     for row in table:
-        hi_model[row['hpxindex']] += row['amplitude']
+        hi_model[row["hpxindex"]] += row["amplitude"]
 
     # convert to cm**-2, 1.288 is EBHIS chanwidth
     to_coldens = 1.82e18 * 1.288
@@ -53,11 +43,11 @@ def make_ncomp_map(table):
     """
     Create a map of the number of components, used to model the HI emission
     """
-    npix = hp.nside2npix(2**10)
+    npix = hp.nside2npix(2 ** 10)
     ncomps = np.zeros(npix, dtype=int)
 
     for row in table:
-        ncomps[row['hpxindex']] += 1
+        ncomps[row["hpxindex"]] += 1
 
     return ncomps
 
@@ -80,8 +70,15 @@ def inspect_spectra(data_table, model_table, nsamples, x_model):
         spectra.append(np.squeeze(data_table[sample_index]))
 
         # model
-        gauss_params = np.array([[row['amplitude'], row['center_kms'], row['sigma_kms']] for row in model_table.where("""hpxindex=={}""".format(sample_index))])
-        model_spectra.append(CDELT3 / 1.e3 * f_model(gauss_params.flatten(), x_model)[1])
+        gauss_params = np.array(
+            [
+                [row["amplitude"], row["center_kms"], row["sigma_kms"]]
+                for row in model_table.where("""hpxindex=={}""".format(sample_index))
+            ]
+        )
+        model_spectra.append(
+            CDELT3 / 1.0e3 * f_model(gauss_params.flatten(), x_model)[1]
+        )
 
     return spectra, model_spectra
 
@@ -95,24 +92,25 @@ def main():
     argp = argparse.ArgumentParser(description=__doc__)
 
     argp.add_argument(
-        '-d',
-        '--data',
-        default='/vol/ebhis2local/data1/dlenz/projects/survey2pytable/data/HI4PI.h5',
-        metavar='infile',
-        help='Data pytable',
-        type=str)
+        "-d",
+        "--data",
+        default="/vol/ebhis2local/data1/dlenz/projects/survey2pytable/data/HI4PI.h5",
+        metavar="infile",
+        help="Data pytable",
+        type=str,
+    )
 
     argp.add_argument(
-        '-n',
-        '--nsamples',
+        "-n",
+        "--nsamples",
         default=5,
-        help='Number of random sightlines that are inspected',
-        type=int)
+        help="Number of random sightlines that are inspected",
+        type=int,
+    )
 
     argp.add_argument(
-        'gaussdec',
-        help='location of the Gaussian decomposition',
-        type=str)
+        "gaussdec", help="location of the Gaussian decomposition", type=str
+    )
 
     args = argp.parse_args()
 
@@ -128,23 +126,20 @@ def main():
     # hp.mollview(hi_model, xsize=4000.)
 
     # velocity axis in km/s
-    x_data = chan2velo(np.arange(945)) / 1.e3
-    x_model = np.linspace(-500., 500., 1e4)
+    velos_model = np.linspace(-500.0, 500.0, 1e4)
 
     spectra, model_spectra = inspect_spectra(
-        data_table=data,
-        model_table=gdec,
-        nsamples=10,
-        x_model=x_model)
+        data_table=data, model_table=gdec, nsamples=10, x_model=x_model
+    )
 
     shift = 0
     for i, (spectrum, model_spectrum) in enumerate(zip(spectra, model_spectra)):
-        pl.plot(x_data, spectrum + shift)
-        pl.plot(x_model, model_spectrum + shift)
+        pl.plot(hi4pi.VELOGRID, spectrum + shift)
+        pl.plot(velos_model, model_spectrum + shift)
         shift += np.nanmax(spectrum)
 
     pl.show()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
