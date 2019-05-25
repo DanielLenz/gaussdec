@@ -63,10 +63,10 @@ def initial_centers_pdf(coordinates, values, threshold=0.1, kernel=0.0, trim=10)
 
 default_p = {
     "min_components": 1,
-    "max_components": 10,
+    "max_components": 12,
     "iterations": 3,
     "int_low": 5e18 / 1.82e18 / 1.28,
-    "int_high": 1e21 / 1.82e18 / 1.28,
+    "int_high": 5e21 / 1.82e18 / 1.28,
     "sigma_low": np.sqrt(50 / 21.85) / 1.28 / 2.35,
     "sigma_high": np.sqrt(40000 / 21.85) / 1.28 / 2.35,
     "pdf_threshold": 0.05,
@@ -76,6 +76,22 @@ default_p = {
     "iteration_size": 5,
 }
 
+
+# default_p = {
+#     "min_components": 1,
+#     "max_components": 10,
+#     "iterations": 3,
+#     "int_low": 5e18 / 1.82e18 / 1.28,
+#     "int_high": 1e21 / 1.82e18 / 1.28,
+#     "sigma_low": np.sqrt(50 / 21.85) / 1.28 / 2.35,
+#     "sigma_high": np.sqrt(40000 / 21.85) / 1.28 / 2.35,
+#     "pdf_threshold": 0.05,
+#     "pdf_kernel": 3.32,
+#     "fit_method": "l-bfgs-b",
+#     "trim": 200,
+#     "iteration_size": 5,
+# }
+# 
 
 def fit_spectrum(y, objective, jacobian, stats, p):
 

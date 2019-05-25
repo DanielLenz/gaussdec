@@ -1,6 +1,7 @@
 import warnings
 from multiprocessing import Pool
 import argparse
+from functools import partial
 import os
 import sys
 import healpy as hp
@@ -8,6 +9,7 @@ import tables
 import numpy as np
 from datetime import datetime
 
+from myhelpers import misc
 from myhelpers.datasets import hi4pi
 
 from specfitting import fit_spectrum, make_multi_gaussian_model, default_p
@@ -44,6 +46,7 @@ class GaussDec(tables.IsDescription):
 
     # Gauss fit parameters
     amplitude = tables.Float32Col()
+    peak = tables.Float32Col()
 
     center_c = tables.Float32Col()
     center_kms = tables.Float32Col()
@@ -93,14 +96,18 @@ def initializer(infile):
     return None
 
 
-def do_fit(row_index):
+def do_fit(row_index, parameters=None):
     """
     Fit a given row of the input file
     """
+
+    if parameters is None:
+        parameters = default_p
+
     table = store.root.survey
 
     row = table[row_index]
-    fitresults = fit_spectrum(row, f_objective, f_jacobian, f_stats, default_p)[
+    fitresults = fit_spectrum(row, f_objective, f_jacobian, f_stats, parameters)[
         "parameters"
     ]
 
@@ -154,8 +161,11 @@ def fit_spectra(arguments):
 
         gdec_table = gdec_store.root.gaussdec
 
+        # Parse config
+        config = misc.parse_config(arguments.config)
+        do_fit_eff = partial(do_fit, parameters=config["fit_parameters"])
         for row_index, fitresults in pool.imap(
-            do_fit,
+            do_fit_eff,
             get_row_index(arguments.nsamples, arguments.hpxindices, infile_table),
         ):
             hpxindex = row_index
@@ -174,6 +184,10 @@ def fit_spectra(arguments):
 
                 entry["sigma_c"] = fitresults[i * 3 + 2]
                 entry["sigma_kms"] = entry["sigma_c"] * hi4pi.CDELT3
+
+                # Peak of the component in Kelvin
+                # Peak = Integral / 2pi / sigma
+                entry["peak"] = entry["amplitude"] / 2. / np.pi / entry["sigma_c"]
 
                 entry.append()
 
@@ -197,10 +211,14 @@ def main():
     argp.add_argument(
         "-i",
         "--infile",
-        default="/users/dlenz/projects/HI4PI/data/raw/HI4PI_DR1.h5",
+        default=misc.bpjoin("HI4PI/data/raw/HI4PI_DR1.h5"),
         metavar="infile",
         help="Source pytable",
         type=str,
+    )
+
+    argp.add_argument(
+        "-p", "--config", metavar="config_file", help="Configuration file", type=str
     )
 
     argp.add_argument(

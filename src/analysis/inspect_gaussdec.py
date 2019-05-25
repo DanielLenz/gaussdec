@@ -1,14 +1,22 @@
+import argparse
+from pathlib import Path
+
+import matplotlib as mpl
+
+mpl.use("pdf")
+import matplotlib.pyplot as plt
 import tables
 import numpy as np
-import matplotlib
-import pylab as pl
-import argparse
-
 import healpy as hp
 
 from myhelpers.datasets import hi4pi
+from myhelpers import misc
 
-from specfitting import make_multi_gaussian_model
+import site
+
+site.addsitedir(misc.bpjoin("gaussdec"))
+from src.decompose import specfitting
+from src.analysis import core
 
 """
 Inspect the Gaussian decomposition of EBHIS and GASS
@@ -23,40 +31,11 @@ inspect_spectra(data_table, model_table, nsamples) : Inspect a given, random
 """
 
 
-def reconstruct_coldens(table):
-    """
-    Reconstruct a column density map of the full sky at nside=1024
-    """
-    npix = hp.nside2npix(1024)
-    hi_model = np.zeros(npix, dtype=np.float32)
-
-    for row in table:
-        hi_model[row["hpxindex"]] += row["amplitude"]
-
-    # convert to cm**-2, 1.288 is EBHIS chanwidth
-    to_coldens = 1.82e18 * 1.288
-
-    return hi_model * to_coldens
-
-
-def make_ncomp_map(table):
-    """
-    Create a map of the number of components, used to model the HI emission
-    """
-    npix = hp.nside2npix(2 ** 10)
-    ncomps = np.zeros(npix, dtype=int)
-
-    for row in table:
-        ncomps[row["hpxindex"]] += 1
-
-    return ncomps
-
-
 def inspect_spectra(data_table, model_table, nsamples, x_model):
     """
     Inspect a given, random number of spectra
     """
-    model_functions = make_multi_gaussian_model()
+    model_functions = specfitting.make_multi_gaussian_model()
     f_model = model_functions[0]
 
     # draw random, unique hpxindices
@@ -83,9 +62,23 @@ def inspect_spectra(data_table, model_table, nsamples, x_model):
     return spectra, model_spectra
 
 
+def make_maps(gdec, outpath: Path):
+    # Reconstruct column density
+    hi_model = core.reconstruct_coldens(table=gdec)
+
+    # Inspect reconstruction
+    hp.mollview(hi_model)
+    plt.savefig(outpath.joinpath("model_mollview.pdf"), dpi=300)
+
+    # number of components
+    n_comps = core.make_ncomp_map(table=gdec)
+    hp.mollview(n_comps)
+    plt.savefig(outpath.joinpath("ncomps_mollview.pdf"), dpi=300)
+
+
 def main():
     """
-    Inspect the Gaussian decomposition of EBHIS and GASS
+    Inspect the Gaussian decomposition
     """
 
     # evaluate parsed arguments
@@ -94,7 +87,7 @@ def main():
     argp.add_argument(
         "-d",
         "--data",
-        default="/vol/ebhis2local/data1/dlenz/projects/survey2pytable/data/HI4PI.h5",
+        default=misc.bpjoin("HI4PI/data/raw/HI4PI_DR1.h5"),
         metavar="infile",
         help="Data pytable",
         type=str,
@@ -114,31 +107,35 @@ def main():
 
     args = argp.parse_args()
 
-    # load tables
+    # Load tables
     gdec_store = tables.open_file(args.gaussdec)
     gdec = gdec_store.root.gaussdec
 
     data_store = tables.open_file(args.data)
     data = data_store.root.survey
 
-    # inspect reconstruction
-    # hi_model = reconstruct_coldens(table=gdec)
-    # hp.mollview(hi_model, xsize=4000.)
+    outpath = Path(misc.bpjoin("gaussdec/figures/"))
+    outpath.mkdir(parents=True, exist_ok=True)
+
+    # Make maps
+    make_maps(gdec=gdec, outpath=outpath)
 
     # velocity axis in km/s
-    velos_model = np.linspace(-500.0, 500.0, 1e4)
 
-    spectra, model_spectra = inspect_spectra(
-        data_table=data, model_table=gdec, nsamples=10, x_model=x_model
-    )
 
-    shift = 0
-    for i, (spectrum, model_spectrum) in enumerate(zip(spectra, model_spectra)):
-        pl.plot(hi4pi.VELOGRID, spectrum + shift)
-        pl.plot(velos_model, model_spectrum + shift)
-        shift += np.nanmax(spectrum)
-
-    pl.show()
+#     velos_model = np.linspace(-500.0, 500.0, 1e4)
+#
+#     spectra, model_spectra = inspect_spectra(
+#         data_table=data, model_table=gdec, nsamples=10, x_model=x_model
+#     )
+#
+#     shift = 0
+#     for i, (spectrum, model_spectrum) in enumerate(zip(spectra, model_spectra)):
+#         pl.plot(hi4pi.VELOGRID, spectrum + shift)
+#         pl.plot(velos_model, model_spectrum + shift)
+#         shift += np.nanmax(spectrum)
+#
+#     pl.show()
 
 
 if __name__ == "__main__":

@@ -6,3 +6,4 @@ data
 deprecated
 images
 .ipynb_checkpoints
+.mypy_cache/
