@@ -1,4 +1,4 @@
-from typing import NamedTuple, List, Set
+from typing import NamedTuple, List, Set, Dict, Callable, Iterator
 from pathlib import Path
 import logging
 
@@ -69,25 +69,24 @@ def make_maps(config):
         **hpx.BASEKW,
     )
 
+
+def plot_maps(config):
     # Plot
     plotters = build_plotters()
     for plotter in plotters:
         plot_nhi(nhi, plotter)
         plt.savefig(
-            config["paths"]["plotdir"].joinpath(f"nhi_{plotter['suffix']}.pdf"), dpi=300
+            config["paths"]["plotdir"].joinpath(f"nhi_{plotter.suffix}.pdf"), dpi=300
         )
 
         plot_nhi(nhi_in, plotter)
         plt.savefig(
-            config["paths"]["plotdir"].joinpath(f"nhi_in_{plotter['suffix']}.pdf"),
-            dpi=300,
+            config["paths"]["plotdir"].joinpath(f"nhi_in_{plotter.suffix}.pdf"), dpi=300
         )
 
         plot_nhi_residual(nhi_residual, plotter)
         plt.savefig(
-            config["paths"]["plotdir"].joinpath(
-                f"nhi_residual_{plotter['suffix']}.pdf"
-            ),
+            config["paths"]["plotdir"].joinpath(f"nhi_residual_{plotter.suffix}.pdf"),
             dpi=300,
         )
 
@@ -95,31 +94,49 @@ def make_maps(config):
     return
 
 
-def build_plotters():
-    mw_view = dict(func=hp.mollview, kwargs=dict(), suffix="mw")
-    ot_view = dict(func=hp.orthview, kwargs=dict(rot=[0, 90]), suffix="orth")
+@dataclass
+class Plotter:
+    func: Callable
+    kwargs: Dict
+    suffix: str
+
+
+def build_plotters() -> Iterator(Plotter):
+    """
+    Constructs visualization functions such as hp.mollview and hp.cartview.
+
+    Returns
+    -------
+    plotters : Iterator
+        Plot functions, instances of Plotter
+    """
+
+    mw_view = Plotter(func=hp.mollview, kwargs=dict(), suffix="mw")
+    ot_view = Plotter(func=hp.orthview, kwargs=dict(rot=[0, 90]), suffix="orth")
 
     lonras = [[10, 20], [40, 60]]
     latras = [[30, 40], [40, 60]]
 
     cart_views = [
-        dict(func=hp.cartview, kwargs=dict(lonra=lonra, latra=latra), suffix=f"cart{i}")
+        Plotter(
+            func=hp.cartview, kwargs=dict(lonra=lonra, latra=latra), suffix=f"cart{i}"
+        )
         for i, (lonra, latra) in enumerate(zip(lonras, latras))
     ]
-
-    return iter((mw_view, ot_view, *cart_views))
+    plotters = iter((mw_view, ot_view, *cart_views))
+    return plotters
 
 
 def plot_nhi(nhi, plotter):
-    plotter["func"](nhi, **plotter["kwargs"])
+    plotter.func(nhi, **plotter.kwargs)
     hp.graticule()
 
 
 def plot_nhi_residual(nhi_residual, plotter):
 
     vmin, med, vmax = stats.scoreatpercentile(nhi_residual, [1, 50, 99])
-    kwargs = dict(min=vmin, max=-1 * vmin, cmap="RdYlBu", **plotter["kwargs"])
-    plotter["func"](nhi_residual, **kwargs)
+    kwargs = dict(min=vmin, max=-1 * vmin, cmap="RdYlBu", **plotter.kwargs)
+    plotter.func(nhi_residual, **kwargs)
     hp.graticule()
 
 

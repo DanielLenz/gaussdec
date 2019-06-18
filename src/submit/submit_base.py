@@ -7,10 +7,10 @@ from subprocess import run
 from myhelpers import misc
 
 @click.command()
-@click.option("--config", help="Config file")
-def main(config):
+@click.option("--modeldir", help="Model directory")
+def main(modeldir):
     logging.basicConfig(level=logging.INFO, **misc.LOGGING_KW)
-    logging.info(f"Using config file at {config}")
+    logging.info(f"Fitting model in {modeldir}")
 
     workdir = os.environ["WORK"]
 
@@ -23,8 +23,8 @@ def main(config):
         run([
             "sbatch",
             f"{workdir}/projects/gaussdec/src/submit/run_single_skx.sh",
-            f"{config}",
-            f"{idx_number}"
+            f"{modeldir}",
+            f"{idx_number}",
             ])
 
 if __name__ == '__main__':

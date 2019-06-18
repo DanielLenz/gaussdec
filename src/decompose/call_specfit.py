@@ -45,8 +45,9 @@ class GaussDec(tables.IsDescription):
     glat = tables.Float32Col()
 
     # Gauss fit parameters
-    amplitude = tables.Float32Col()
-    peak = tables.Float32Col()
+    line_integral_cK = tables.Float32Col()
+    line_integral_kmsK = tables.Float32Col()
+    peak_amplitude = tables.Float32Col()
 
     center_c = tables.Float32Col()
     center_kms = tables.Float32Col()
@@ -167,10 +168,10 @@ def fit_spectra(arguments):
         for row_index, fitresults in pool.imap(
             do_fit_eff,
             get_row_index(arguments.nsamples, arguments.hpxindices, infile_table),
+#            chunksize=10_000,
         ):
             hpxindex = row_index
-            theta, glon = np.rad2deg(hp.pix2ang(1024, hpxindex))
-            glat = 90.0 - theta
+            glon, glat = hp.pix2ang(1024, hpxindex)
 
             for i in range(len(fitresults) // 3):
                 entry = gdec_table.row
@@ -178,7 +179,8 @@ def fit_spectra(arguments):
                 entry["glon"] = glon
                 entry["glat"] = glat
 
-                entry["amplitude"] = fitresults[i * 3]
+                entry["line_integral_cK"] = fitresults[i * 3]
+                entry["line_integral_kmsK"] = entry["line_integral_cK"] * hi4pi.CDELT3
                 entry["center_c"] = fitresults[i * 3 + 1]
                 entry["center_kms"] = hi4pi.channel2velo(entry["center_c"])
 
@@ -187,7 +189,7 @@ def fit_spectra(arguments):
 
                 # Peak of the component in Kelvin
                 # Peak = Integral / 2pi / sigma
-                entry["peak"] = entry["amplitude"] / 2. / np.pi / entry["sigma_c"]
+                entry["peak_amplitude"] = entry["line_integral_cK"] / 2. / np.pi / entry["sigma_c"]
 
                 entry.append()
 

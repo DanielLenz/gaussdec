@@ -38,8 +38,9 @@
 ##SBATCH -A myproject       # Allocation name (req'd if you have more than 1)
 
 # Grab basepixel to be fit 
-basepix=$1
-config_file=$2
+modeldir=$1
+basepix=$2
+
 if [[ -n "$basepix" ]]; then
     echo "basepix is $basepix"
 else
@@ -48,11 +49,12 @@ fi
 
 # Get filenames
 indices_filename=$WORK/projects/gaussdec/data/indices/indices$basepix.npy
-out_filename=$WORK/projects/gaussdec/data/processed/basepix$basepix.h5
+out_filename=$modeldir/raw/basepix$basepix.h5
+config_filename=$modeldir/decompose.yaml
 
 # Set thread count (default value is 1)
 export OMP_NUM_THREADS=96
 
 # Launch OpenMP code
-python3 $WORK/projects/gaussdec/src/decompose/call_specfit.py --config $config_file -c True -x $indices_filename $out_filename
+python3 $WORK/projects/gaussdec/src/decompose/call_specfit.py --config $config_filename -c True -x $indices_filename $out_filename
 

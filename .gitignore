@@ -2,8 +2,9 @@
 *.gzjs
 fitting.pyc
 *.pyc
-data
+data/
+models/
 deprecated
-images
+figures/
 .ipynb_checkpoints
 .mypy_cache/

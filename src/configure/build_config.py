@@ -5,6 +5,7 @@ import yaml
 import numpy as np
 
 from myhelpers import misc
+from myhelpers.datasets import hi4pi
 
 
 class Config:
@@ -24,9 +25,13 @@ class Config:
         self.mk_dirs()
 
     def set_fitparameters(self) -> None:
+        velo_min, velo_max = -300, 300  # in km/s
         self.config["fit_parameters"] = dict()
-        self.config["fit_parameters"]["v_range_kms"] = (-343, 343)
-        self.config["fit_parameters"]["v_range_channels"] = (200, 733)
+        self.config["fit_parameters"]["v_range_kms"] = (velo_min, velo_max)
+        self.config["fit_parameters"]["v_range_channels"] = (
+            hi4pi.velo2channel(velo_min),
+            hi4pi.velo2channel(velo_max),
+        )
         self.config["fit_parameters"]["min_components"] = 1
         self.config["fit_parameters"]["max_components"] = 12
         self.config["fit_parameters"]["iterations"] = 8
@@ -58,7 +63,7 @@ class Config:
         )
 
     def mk_dirs(self) -> None:
-        for kind in ['rawdir', 'procdir', 'plotdir']:
+        for kind in ["rawdir", "procdir", "plotdir"]:
             self.config["paths"][kind].mkdir(parents=True, exist_ok=True)
 
     def set_submit(self) -> None:
@@ -74,7 +79,7 @@ class Config:
 
 def main():
     logging.basicConfig(level=logging.INFO)
-    modeldir = Path(misc.bpjoin("gaussdec/data/models/complete2/"))
+    modeldir = Path(misc.bpjoin("gaussdec/models/complete2/"))
     config = Config(modeldir=modeldir)
 
     # Write to yaml
