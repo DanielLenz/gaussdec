@@ -8,7 +8,6 @@ from scipy.optimize import minimize
 
 
 def make_multi_gaussian_model(tsys=40.0):
-
     x = T.vector("x")
     y = T.vector("y")
     sx = x.dimshuffle(0, "x")
@@ -91,13 +90,14 @@ default_p = {
 #     "trim": 200,
 #     "iteration_size": 5,
 # }
-# 
+#
+
 
 def fit_spectrum(y, objective, jacobian, stats, p):
 
     tmask = np.ones(y.shape[0], dtype=bool)
-    tmask[: p["trim"]] = False
-    tmask[-p["trim"] :] = False
+    tmask[: p["v_range_channels"][0]] = False
+    tmask[p["v_range_channels"][1] :] = False
     tmask &= np.isfinite(y)
 
     x = np.arange(y.shape[0])
@@ -124,7 +124,8 @@ def fit_spectrum(y, objective, jacobian, stats, p):
 
             bounds = [
                 (p["int_low"], p["int_high"]),
-                (None, None),
+                # (None, None),
+                (p["v_range_channels"][0] - 10, p["v_range_channels"][1] + 10),
                 (p["sigma_low"], p["sigma_high"]),
             ] * n_components
 

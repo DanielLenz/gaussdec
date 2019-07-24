@@ -14,7 +14,6 @@ import site
 
 site.addsitedir(misc.bpjoin("gaussdec"))
 from src import this_project as P
-from src import core
 
 
 def merge_tables(modeldir: Path) -> None:
@@ -54,10 +53,6 @@ def main(modeldir):
 
     # Merge tables
     merge_tables(modeldir)
-
-    # Compute HPX maps
-    # compute_maps(modeldir)
-
 
 if __name__ == "__main__":
     main()

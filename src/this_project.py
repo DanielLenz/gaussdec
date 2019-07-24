@@ -3,8 +3,8 @@ import healpy as hp
 from sys import path
 
 # paths
-BASEPATH = '/users/dlenz/projects/'
-PROJECTPATH = '/users/dlenz/projects/gaussdec/'
+# BASEPATH = '/users/dlenz/projects/'
+# PROJECTPATH = '/users/dlenz/projects/gaussdec/'
 
 # healpy
 NSIDE = 1024
@@ -18,7 +18,7 @@ CONTLEVELS = 10**np.array([0., 0.75, 1.5, 2.25, 3., 4.])
 
 
 # EBHISchannel*Kelvin to column density
-cK2nh = 1.822e18 * 1.288
+# cK2nh = 1.822e18 * 1.288
 
 # figsize in pixels
 FIGSIZE_1COL = [3.5433, 2.1898]

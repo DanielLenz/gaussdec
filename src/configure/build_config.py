@@ -33,8 +33,8 @@ class Config:
             hi4pi.velo2channel(velo_max),
         )
         self.config["fit_parameters"]["min_components"] = 1
-        self.config["fit_parameters"]["max_components"] = 12
-        self.config["fit_parameters"]["iterations"] = 8
+        self.config["fit_parameters"]["max_components"] = 10
+        self.config["fit_parameters"]["iterations"] = 3
         self.config["fit_parameters"]["int_low"] = 5e18 / 1.82e18 / 1.28
         self.config["fit_parameters"]["int_high"] = 5e21 / 1.82e18 / 1.28
         self.config["fit_parameters"]["sigma_low"] = np.sqrt(50 / 21.85) / 1.28 / 2.35
@@ -44,13 +44,13 @@ class Config:
         self.config["fit_parameters"]["pdf_threshold"] = 0.05
         self.config["fit_parameters"]["pdf_kernel"] = 3.32
         self.config["fit_parameters"]["fit_method"] = "l-bfgs-b"
-        self.config["fit_parameters"]["trim"] = 200
+        # self.config["fit_parameters"]["trim"] = 200
         self.config["fit_parameters"]["iteration_size"] = 5
 
     def set_paths(self) -> None:
         self.config["paths"] = dict()
         self.config["paths"]["infile"] = Path(
-            misc.bpjoin("HI4PI/data/raw/HI4PI_DR1.h5")
+            misc.bpjoin("HI4PI/data/raw/survey.npy")
         )
         self.config["paths"]["modeldir"] = self.modeldir
 
@@ -79,7 +79,7 @@ class Config:
 
 def main():
     logging.basicConfig(level=logging.INFO)
-    modeldir = Path(misc.bpjoin("gaussdec/models/complete2/"))
+    modeldir = Path(misc.bpjoin("gaussdec/models/complete3/"))
     config = Config(modeldir=modeldir)
 
     # Write to yaml

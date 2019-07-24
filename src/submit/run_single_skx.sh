@@ -32,7 +32,7 @@
 #SBATCH -N 1               # Total # of nodes (must be 1 for OpenMP)
 #SBATCH -n 1               # Total # of mpi tasks (should be 1 for OpenMP)
 #SBATCH -c 96              # Total number of cores
-#SBATCH -t 03:00:00        # Run time (hh:mm:ss)
+#SBATCH -t 08:00:00        # Run time (hh:mm:ss)
 ##SBATCH --mail-user=mail@daniellenz.org
 ##SBATCH --mail-type=all    # Send email at begin and end of job
 ##SBATCH -A myproject       # Allocation name (req'd if you have more than 1)
