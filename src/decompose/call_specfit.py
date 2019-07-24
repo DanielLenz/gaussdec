@@ -25,21 +25,6 @@ from src.decompose.specfitting import fit_spectrum, make_multi_gaussian_model
 Generate a Gaussian decomposition of spectra, based on and written to hd5-files
 """
 
-"""
-Functions
----------
-create_tables(args) : If the table exists, abort. Else, create a new hdf5-table
-    where the decomposition is saved.
-initializer(infile) : Prepare the Gaussian model and the input file, needed for
-    multiprocessing
-do_fit(row_index) : Fit a given row of the input file
-get_row_index(nsamples, table) : Yield all the rows of the input file or a
-    randomly chosen sample
-fit_spectra(args) : Read the input file, create the pool,
-    assign the fitting jobs and write the results to disk
-"""
-
-
 class GaussDec(tables.IsDescription):
     """
     Description for the pytable, specifying the columns
@@ -94,45 +79,6 @@ def create_tables(outname: Path, clobber: bool):
 
     return 0
 
-
-# def initializer(infile):
-#     """
-#     Prepare the Gaussian model and the input file, needed for
-#     multiprocessing
-#     """
-#
-#     global f_model, f_residual, f_objective, f_jacobian, f_stats
-#
-#     # create theano functions
-#     f_model, f_residual, f_objective, f_jacobian, f_stats = make_multi_gaussian_model()
-#
-#     global survey
-#     survey = np.load(infile, mmap_mode="r")
-#     # store = tables.open_file(infile)
-#
-#     return
-
-
-# def do_fit(row_index, survey, theano_funcs, parameters=None):
-#     """
-#     Fit a given row of the input file
-#     """
-#
-#     if parameters is None:
-#         parameters = default_p
-#
-#     f_objective, f_jacobian, f_stats = theano_funcs
-#
-#     # Extract the spectrum from the mmap'ed full 3D cube
-#     row = survey[row_index]
-#
-#     fitresults = fit_spectrum(row, f_objective, f_jacobian, f_stats, parameters)[
-#         "parameters"
-#     ]
-#
-#     return row_index, fitresults
-
-
 def get_row_index(n_samples: int, hpxindices, n_spectra_in_survey: int):
     """
     Yield all the rows of the input file or a randomly chosen sample
@@ -164,78 +110,6 @@ def get_row_index(n_samples: int, hpxindices, n_spectra_in_survey: int):
         for i, row_index in enumerate(indices):
             yield row_index
 
-
-# def fit_spectra(arguments):
-#
-#     # Yields (row_idx, spectra)
-#     chunks = get_chunks()
-#
-#     results = pool.imap(calculation, chunks(data))
-#     results = np.fromiter(results, dtype=np.float)
-
-
-# def fit_spectra(arguments):
-#     """
-#     Read the input file, create the pool, assign the fitting jobs and write
-#     the results to disk
-#     """
-#     # Create a pool, fit all files
-#     # pool = Pool(initializer=initializer, initargs=(arguments.infile,))
-#     pool = mp.Pool()
-#
-#     # Parse config. This creates a dict object, based on the
-#     # yaml file
-#     config = misc.parse_config(arguments.config)
-#
-#     # Allocate the output list
-#     fitresult_dicts = []
-#
-#     # Load shared data for workers
-#     f_model, f_residual, f_objective, f_jacobian, f_stats = make_multi_gaussian_model()
-#     theano_funcs = (f_objective, f_jacobian, f_stats)
-#
-#     survey = np.load(arguments.infile)  # , mmap_mode="r")
-#     n_spectra_in_survey = survey.shape[0]
-#
-#     # Build the actual fit function
-#     do_fit_eff = partial(
-#         do_fit,
-#         survey=survey,
-#         theano_funcs=theano_funcs,
-#         parameters=config["fit_parameters"],
-#     )
-#
-#     for row_index, fitresults in pool.imap(
-#         # for row_index, fitresults in map(
-#         do_fit_eff,
-#         get_row_index(arguments.nsamples, arguments.hpxindices, n_spectra_in_survey),
-#         #            chunksize=10_000,
-#     ):
-#         glon, glat = hp.pix2ang(1024, row_index, lonlat=True)
-#
-#         for i in range(len(fitresults) // 3):
-#             entry = dict()
-#             entry["hpxindex"] = row_index
-#             entry["glon"] = glon
-#             entry["glat"] = glat
-#
-#             entry["line_integral_cK"] = fitresults[i * 3]
-#             entry["line_integral_kmsK"] = entry["line_integral_cK"] * hi4pi.CDELT3
-#             entry["center_c"] = fitresults[i * 3 + 1]
-#             entry["center_kms"] = hi4pi.channel2velo(entry["center_c"])
-#
-#             entry["sigma_c"] = fitresults[i * 3 + 2]
-#             entry["sigma_kms"] = entry["sigma_c"] * hi4pi.CDELT3
-#
-#             # Peak of the component in Kelvin
-#             # Peak = Integral / 2pi / sigma
-#             entry["peak_amplitude"] = (
-#                 entry["line_integral_cK"] / 2.0 / np.pi / entry["sigma_c"]
-#             )
-#
-#             fitresult_dicts.append(entry)
-#
-#     return fitresult_dicts
 
 
 def workerresults2dict(worker_results: Dict, row_index: int) -> List[Dict]:
