@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Union
 from pathlib import Path
 import multiprocessing as mp
 import argparse
@@ -24,6 +24,7 @@ from src.decompose.specfitting import fit_spectrum, make_multi_gaussian_model
 """
 Generate a Gaussian decomposition of spectra, based on and written to hd5-files
 """
+
 
 class GaussDec(tables.IsDescription):
     """
@@ -79,37 +80,27 @@ def create_tables(outname: Path, clobber: bool):
 
     return 0
 
-def get_row_index(n_samples: int, hpxindices, n_spectra_in_survey: int):
+
+def get_row_index(
+    n_samples: int, hpxindices: Optional[Union[str, Path]], n_spectra_in_survey: int
+):
     """
     Yield all the rows of the input file or a randomly chosen sample
     """
     if hpxindices is None:
         if n_samples < 0:
             for row_index in range(n_spectra_in_survey):
-                if not row_index % 10000:
-                    print(
-                        "Working on row {i} of {n}...".format(
-                            i=row_index, n=n_spectra_in_survey
-                        )
-                    )
                 yield row_index
         else:
             sample_indices = np.random.randint(
                 low=0, high=n_spectra_in_survey, size=n_samples
             )
-            # sample_indices = np.random.choice(
-            #    range(n_spectra_in_survey), size=n_samples, replace=False
-            # )
-
-            for i, row_index in enumerate(sample_indices):
-                if not i % 1000:
-                    print("Working on row {i} of {n}..".format(i=i, n=n_samples))
+            for row_index in sample_indices:
                 yield row_index
     else:
         indices = np.load(hpxindices)
-        for i, row_index in enumerate(indices):
+        for row_index in indices:
             yield row_index
-
 
 
 def workerresults2dict(worker_results: Dict, row_index: int) -> List[Dict]:

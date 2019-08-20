@@ -33,10 +33,10 @@ class Config:
             hi4pi.velo2channel(velo_max),
         )
         self.config["fit_parameters"]["min_components"] = 1
-        self.config["fit_parameters"]["max_components"] = 10
+        self.config["fit_parameters"]["max_components"] = 12
         self.config["fit_parameters"]["iterations"] = 3
         self.config["fit_parameters"]["int_low"] = 5e18 / 1.82e18 / 1.28
-        self.config["fit_parameters"]["int_high"] = 5e21 / 1.82e18 / 1.28
+        self.config["fit_parameters"]["int_high"] = 5e22 / 1.82e18 / 1.28
         self.config["fit_parameters"]["sigma_low"] = np.sqrt(50 / 21.85) / 1.28 / 2.35
         self.config["fit_parameters"]["sigma_high"] = (
             np.sqrt(40_000 / 21.85) / 1.28 / 2.35
@@ -79,7 +79,7 @@ class Config:
 
 def main():
     logging.basicConfig(level=logging.INFO)
-    modeldir = Path(misc.bpjoin("gaussdec/models/complete3/"))
+    modeldir = Path(misc.bpjoin("gaussdec/models/complete4/"))
     config = Config(modeldir=modeldir)
 
     # Write to yaml

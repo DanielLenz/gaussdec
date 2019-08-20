@@ -30,9 +30,6 @@ site.addsitedir(misc.bpjoin("gaussdec"))
 from src import this_project as P
 from src import core
 
-# Globals
-g_backend = "pdf"
-
 
 def get_nhi_in(infile: Path, chan_min: int, chan_max: int) -> np.ndarray:
     survey = np.load(infile, mmap_mode="r")
@@ -277,7 +274,8 @@ class Spectrum:
 
     velos: np.ndarray
     input_data: np.ndarray
-    components: Tuple  # Tuple of the individual components Nx(line_integral_cK, center_c, sigma_c)
+    components: Tuple[np.ndarray]  # Tuple of the individual component spectra
+    fit_parameters: List[Dict]  # List of fit parameter dicts
     total_model: np.ndarray
     hpxindex: int
     glon: float
@@ -315,6 +313,7 @@ class Spectrum:
             velos=velos,
             input_data=input_spectrum,
             components=components,
+            fit_parameters=parameter_dicts,
             total_model=total_model,
             hpxindex=idx,
             glon=glon,
@@ -411,14 +410,41 @@ def plot_spectrum(spectrum: Spectrum, ax):
         bbox=textbox_props,
     )
 
+    # Add a second textbox with fit parameters
+    # E.g. "A0 \t v0 \t s0 \n A1 \t v1 \t s1"
+    parameter_str = "\n".join(
+        "; ".join(
+            (
+                f"A = {p['peak_amplitude']:.1f} K",
+                f"v0 = {p['center_kms']:.1f} km/s",
+                f"s = {p['sigma_kms']:.1f} km/s",
+            )
+        )
+        for p in spectrum.fit_parameters
+    )
+
+    ax.text(
+        0.75,
+        0.95,
+        parameter_str,
+        transform=ax.transAxes,
+        fontsize=6,
+        verticalalignment="top",
+        bbox=textbox_props,
+    )
     return ax
 
 
-def plot_spectra(config: Dict, spectra: np.ndarray, grid_shape: Tuple) -> None:
+def plot_spectra(
+    outdir: Path,
+    spectra: np.ndarray,
+    grid_shape: Tuple,
+    vlim: Optional[Tuple] = (-100, 100.0),
+) -> None:
     # Build figure
     # Set figsize based on grid_shape
     nrows, ncols = grid_shape[0], grid_shape[1]
-    figsize = (5 * ncols, 3 * nrows)  # figsize is width X heigth
+    figsize = (8 * ncols, 3 * nrows)  # figsize is width X heigth
     fig, axes = plt.subplots(figsize=figsize, nrows=nrows, ncols=ncols)
 
     # Use a function that plot a spectrum in a single panel
@@ -430,7 +456,7 @@ def plot_spectra(config: Dict, spectra: np.ndarray, grid_shape: Tuple) -> None:
     # Set labels, legends, ticks
     for ax in axes.flatten():
         # ax.tick_params(labelbottom=False)
-        ax.set_xlim(-100, 100)
+        ax.set_xlim(vlim)
 
     # Put all labels on bottom left panel
     axis_lowerleft = axes.flatten()[ncols * (nrows - 1)]
@@ -438,7 +464,7 @@ def plot_spectra(config: Dict, spectra: np.ndarray, grid_shape: Tuple) -> None:
     axis_lowerleft.set_ylabel(r"$T_{\rm B}\ [\rm K]$")
 
     # Save to plotdir
-    outname = config["paths"]["plotdir"].joinpath(f"sample_spectra.{g_backend}")
+    outname = outdir.joinpath(f"sample_spectra.{g_backend}")
     plt.savefig(outname, dpi=300)
 
     return
@@ -556,7 +582,7 @@ def analyze(config):
     # Spectra
     grid_shape = (6, 4)
     spectra = make_spectra(config, grid_shape=grid_shape)
-    plot_spectra(config, spectra, grid_shape=grid_shape)
+    plot_spectra(config["paths"]["plotdir"], spectra, grid_shape=grid_shape)
 
     # Histograms
     plot_histograms_1d(config)

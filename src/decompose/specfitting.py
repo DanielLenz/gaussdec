@@ -1,7 +1,9 @@
+from typing import Optional, List, Set, Dict
 import theano
 import theano.tensor as T
 
 import numpy as np
+from numpy import ndarray as ndarr
 from scipy.interpolate import interp1d
 from scipy.ndimage import gaussian_filter1d, binary_dilation
 from scipy.optimize import minimize
@@ -125,7 +127,7 @@ def fit_spectrum(y, objective, jacobian, stats, p):
             bounds = [
                 (p["int_low"], p["int_high"]),
                 # (None, None),
-                (p["v_range_channels"][0] - 10, p["v_range_channels"][1] + 10),
+                (p["v_range_channels"][0] + 2, p["v_range_channels"][1] - 2),
                 (p["sigma_low"], p["sigma_high"]),
             ] * n_components
 
@@ -154,3 +156,24 @@ def fit_spectrum(y, objective, jacobian, stats, p):
     result_keys = ["parameters", "stats", "components"]
     result_values = [t[0].tolist(), map(float, t[1]), int(t[2])]
     return {k: v for k, v in zip(result_keys, result_values)}
+
+
+def build_tmask(y, min_chan_idx: Optional[int]=None, max_chan_idx: Optional[int]=None) -> ndarr:
+    tmask = np.ones_like(y, dtype=bool)
+    tmask[: min_chan_idx] = False
+    tmask[max_chan_idx:] = False
+    tmask &= np.isfinite(y)
+
+    return tmask
+
+
+def fit_spectrum_new(y, objective, stats, p):
+    tmask = build_tmask(
+        y, min_chan_idx=p["v_range_channels"][0], max_chan_idx=p["v_range_channels"][1]
+    )
+
+    # Truncate x and y
+    x = np.arange(y.shape[0])
+    x = x[tmask]
+    y = y[tmask]
+
